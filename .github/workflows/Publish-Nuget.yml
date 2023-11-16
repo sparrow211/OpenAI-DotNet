@@ -6,13 +6,11 @@ on:
       - dev
     paths:
       - OpenAI-DotNet/**
-      - OpenAI-DotNet-Proxy/**
   pull_request:
     branches:
       - '*'
     paths:
       - OpenAI-DotNet/**
-      - OpenAI-DotNet-Proxy/**
     types:
       - opened
       - synchronize
@@ -44,7 +42,7 @@ jobs:
 
     - name: Test Packages
       run: dotnet test --configuration Release
-      if: ${{ github.ref != 'refs/heads/main' && github.event_name != 'push' }}
+      if: ${{ github.ref != 'refs/heads/dev' && github.event_name != 'push' }}
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         OPENAI_ORGANIZATION_ID: ${{ secrets.OPENAI_ORGANIZATION_ID }}
@@ -52,7 +50,6 @@ jobs:
     - name: Build Pack and Publish NuGet Package
       run: |
         $projectPath = "${{ github.workspace }}\OpenAI-DotNet"
-        $proxyProjectPath = "${{ github.workspace }}\OpenAI-DotNet-Proxy"
 
         # build all
         dotnet build --configuration Release
@@ -81,7 +78,7 @@ jobs:
           exit 1
         }
 
-        $isRelease = "${{ github.ref == 'refs/heads/main' }}"
+        $isRelease = "${{ github.ref == 'refs/heads/dev' }}"
 
         if ($isRelease -eq 'true') {
           dotnet nuget push $packagePath.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
@@ -99,6 +96,4 @@ jobs:
         path: |
           ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.nupkg
           ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.symbols.nupkg
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet-Proxy.${{ env.PACKAGE_VERSION }}.nupkg
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet-Proxy.${{ env.PACKAGE_VERSION }}.symbols.nupkg
         if-no-files-found: ignore
