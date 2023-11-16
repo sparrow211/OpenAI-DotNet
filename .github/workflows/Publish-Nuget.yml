@@ -54,7 +54,7 @@ jobs:
         # build all
         dotnet build --configuration Release
 
-        # pack OpenAI-DotNet
+        # pack PanDa-OpenAI
         dotnet pack $projectPath --configuration Release --include-symbols
         $out = "$projectPath\bin\Release"
         $packagePath = Get-ChildItem -Path $out -File -Include '*.nupkg' -Exclude '*symbols*' -Recurse -ErrorAction SilentlyContinue
@@ -72,15 +72,15 @@ jobs:
           dotnet nuget push $packagePath.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         }
 
-        $version = $packagePath.Name -replace "^OpenAI-DotNet.(.*).nupkg$",'$1'
+        $version = $packagePath.Name -replace "^PanDa-OpenAI.(.*).nupkg$",'$1'
         echo "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       shell: pwsh
 
     - uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: OpenAI-DotNet.${{ env.PACKAGE_VERSION }}
+        name: PanDa-OpenAI.${{ env.PACKAGE_VERSION }}
         path: |
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.nupkg
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.symbols.nupkg
+          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/PanDa-OpenAI.${{ env.PACKAGE_VERSION }}.nupkg
+          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/PanDa-OpenAI.${{ env.PACKAGE_VERSION }}.symbols.nupkg
         if-no-files-found: ignore
