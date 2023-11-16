@@ -5,9 +5,10 @@ namespace OpenAI.Chat
 {
     public sealed class Content
     {
-        public Content() { }
+        public Content()
+        { }
 
-        public Content(ContentType type, string input)
+        public Content(ContentType type, string input, Detail detail = Detail.Auto)
         {
             Type = type;
 
@@ -16,8 +17,9 @@ namespace OpenAI.Chat
                 case ContentType.Text:
                     Text = input;
                     break;
+
                 case ContentType.ImageUrl:
-                    ImageUrl = new ImageUrl(input);
+                    ImageUrl = new ImageUrl(input, detail);
                     break;
             }
         }
