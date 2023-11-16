@@ -3,7 +3,7 @@ name: Nuget Publish
 on:
   push:
     branches:
-      - main
+      - dev
     paths:
       - OpenAI-DotNet/**
       - OpenAI-DotNet-Proxy/**

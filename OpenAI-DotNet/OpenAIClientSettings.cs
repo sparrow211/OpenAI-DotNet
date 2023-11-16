@@ -43,7 +43,8 @@ namespace OpenAI
             {
                 throw new ArgumentException($"You're attempting to pass a \"resourceName\" parameter to \"{nameof(domain)}\". Please specify \"resourceName:\" for this parameter in constructor.");
             }
-
+            if (!domain.Contains("://"))
+                domain = "https://" + domain;
             if (string.IsNullOrWhiteSpace(apiVersion))
             {
                 apiVersion = DefaultOpenAIApiVersion;
@@ -53,7 +54,7 @@ namespace OpenAI
             ApiVersion = apiVersion;
             DeploymentId = string.Empty;
             BaseRequest = $"/{ApiVersion}/";
-            BaseRequestUrlFormat = $"https://{ResourceName}{BaseRequest}{{0}}";
+            BaseRequestUrlFormat = $"{ResourceName}{BaseRequest}{{0}}";
             UseOAuthAuthentication = true;
         }
 
