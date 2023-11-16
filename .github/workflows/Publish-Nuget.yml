@@ -32,68 +32,55 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-    - uses: microsoft/setup-msbuild@v1
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: microsoft/setup-msbuild@v1
 
-    - name: Test Packages
-      run: dotnet test --configuration Release
-      if: ${{ github.ref != 'refs/heads/dev' && github.event_name != 'push' }}
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        OPENAI_ORGANIZATION_ID: ${{ secrets.OPENAI_ORGANIZATION_ID }}
+      - name: Test Packages
+        run: dotnet test --configuration Release
+        if: ${{ github.ref != 'refs/heads/dev' && github.event_name != 'push' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_ORGANIZATION_ID: ${{ secrets.OPENAI_ORGANIZATION_ID }}
 
-    - name: Build Pack and Publish NuGet Package
-      run: |
-        $projectPath = "${{ github.workspace }}\OpenAI-DotNet"
+      - name: Build and Publish NuGet Package
+        run: |
+          $projectPath = "${{ github.workspace }}\OpenAI-DotNet"
 
-        # build all
-        dotnet build --configuration Release
+          # Build OpenAI-DotNet
+          dotnet build --configuration Release
 
-        # pack OpenAI-DotNet
-        dotnet pack $projectPath --configuration Release --include-symbols
-        $out = "$projectPath\bin\Release"
-        $packagePath = Get-ChildItem -Path $out -File -Include '*.nupkg' -Exclude '*symbols*' -Recurse -ErrorAction SilentlyContinue
+          # Pack OpenAI-DotNet
+          dotnet pack $projectPath --configuration Release --include-symbols
+          $out = "$projectPath\bin\Release"
+          $packagePath = Get-ChildItem -Path $out -File -Include '*.nupkg' -Exclude '*symbols*' -Recurse -ErrorAction SilentlyContinue
 
-        if ($packagePath) {
-          Write-Host Package path: $packagePath
-        } else {
-          Write-Host Failed to find package at $out
-          exit 1
-        }
+          if ($packagePath) {
+            Write-Host Package path: $packagePath
+          } else {
+            Write-Host Failed to find package at $out
+            exit 1
+          }
 
-        # pack OpenAI-DotNet-Proxy
-        dotnet pack $proxyProjectPath --configuration Release --include-symbols
-        $proxyOut = "$proxyProjectPath\bin\Release"
-        $proxyPackagePath = Get-ChildItem -Path $proxyOut -File -Include '*.nupkg' -Exclude '*symbols*' -Recurse -ErrorAction SilentlyContinue
+          $isRelease = "${{ github.ref == 'refs/heads/dev' }}"
 
-        if ($proxyPackagePath) {
-          Write-Host Package path: $proxyPackagePath
-        } else {
-          Write-Host Failed to find package at $proxyOut
-          exit 1
-        }
+          if ($isRelease -eq 'true') {
+            dotnet nuget push $packagePath.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
 
-        $isRelease = "${{ github.ref == 'refs/heads/dev' }}"
+          $version = $packagePath.Name -replace "^OpenAI-DotNet.(.*).nupkg$",'$1'
+          echo "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
 
-        if ($isRelease -eq 'true') {
-          dotnet nuget push $packagePath.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-          dotnet nuget push $proxyPackagePath.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        }
-
-        $version = $packagePath.Name -replace "^OpenAI-DotNet.(.*).nupkg$",'$1'
-        echo "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      shell: pwsh
-
-    - uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: OpenAI-DotNet.${{ env.PACKAGE_VERSION }}
-        path: |
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.nupkg
-          ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.symbols.nupkg
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: OpenAI-DotNet.${{ env.PACKAGE_VERSION }}
+          path: |
+            ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.nupkg
+            ${{ github.workspace }}/OpenAI-DotNet/bin/Release/OpenAI-DotNet.${{ env.PACKAGE_VERSION }}.symbols.nupkg
         if-no-files-found: ignore
