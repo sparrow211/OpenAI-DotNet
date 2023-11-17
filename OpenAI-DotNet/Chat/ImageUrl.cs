@@ -6,12 +6,18 @@ namespace OpenAI.Chat
     public sealed class ImageUrl
     {
         [JsonConstructor]
+        public ImageUrl()
+        {
+        }
+
+        [JsonConstructor]
         public ImageUrl(string url)
         {
             Url = url;
             Detail = Detail.Auto;
         }
 
+        [JsonConstructor]
         public ImageUrl(string url, Detail detail)
         {
             Url = url;
