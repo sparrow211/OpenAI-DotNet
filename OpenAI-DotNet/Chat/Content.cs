@@ -27,16 +27,16 @@ namespace OpenAI.Chat
         [JsonInclude]
         [JsonPropertyName("type")]
         [JsonConverter(typeof(JsonStringEnumConverter<ContentType>))]
-        public ContentType Type { get; private set; }
+        public ContentType Type { get; set; }
 
         [JsonInclude]
         [JsonPropertyName("text")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Text { get; private set; }
+        public string Text { get; set; }
 
         [JsonInclude]
         [JsonPropertyName("image_url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageUrl ImageUrl { get; private set; }
+        public ImageUrl ImageUrl { get; set; }
     }
 }

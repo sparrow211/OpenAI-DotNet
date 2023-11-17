@@ -21,12 +21,12 @@ namespace OpenAI.Chat
         [JsonInclude]
         [JsonPropertyName("url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Url { get; private set; }
+        public string Url { get; set; }
 
         [JsonInclude]
         [JsonPropertyName("detail")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         [JsonConverter(typeof(JsonStringEnumConverter<Detail>))]
-        public Detail Detail { get; private set; }
+        public Detail Detail { get; set; }
     }
 }
