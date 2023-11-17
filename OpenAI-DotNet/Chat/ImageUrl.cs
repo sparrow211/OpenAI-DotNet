@@ -10,14 +10,12 @@ namespace OpenAI.Chat
         {
         }
 
-        [JsonConstructor]
         public ImageUrl(string url)
         {
             Url = url;
             Detail = Detail.Auto;
         }
 
-        [JsonConstructor]
         public ImageUrl(string url, Detail detail)
         {
             Url = url;
