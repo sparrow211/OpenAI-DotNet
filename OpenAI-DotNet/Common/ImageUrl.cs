@@ -1,7 +1,7 @@
 using OpenAI.Extensions;
 using System.Text.Json.Serialization;
 
-namespace OpenAI.Chat
+namespace OpenAI
 {
     public sealed class ImageUrl
     {
@@ -13,10 +13,10 @@ namespace OpenAI.Chat
         public ImageUrl(string url)
         {
             Url = url;
-            Detail = Detail.Auto;
+            Detail = ImageDetail.Auto;
         }
 
-        public ImageUrl(string url, Detail detail)
+        public ImageUrl(string url, ImageDetail detail = ImageDetail.Auto)
         {
             Url = url;
             Detail = detail;
@@ -25,12 +25,11 @@ namespace OpenAI.Chat
         [JsonInclude]
         [JsonPropertyName("url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Url { get; set; }
+        public string Url { get; private set; }
 
         [JsonInclude]
         [JsonPropertyName("detail")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        [JsonConverter(typeof(JsonStringEnumConverter<Detail>))]
-        public Detail Detail { get; set; }
+        public ImageDetail Detail { get; private set; }
     }
 }

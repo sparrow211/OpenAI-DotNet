@@ -13,7 +13,7 @@ Forked from [OpenAI-API-dotnet](https://github.com/OkGoDoIt/OpenAI-API-dotnet).
     <PackageLicenseExpression>CC0-1.0</PackageLicenseExpression>
     <PackageTags>OpenAI, AI, ML, API, gpt-4, gpt-3.5-tubo, gpt-3, chatGPT, chat-gpt, gpt-2, gpt, dall-e-2, dall-e-3</PackageTags>
     <Title>AITools OpenAI API</Title>
-    <Version>7.2.3.22</Version>
+    <Version>7.4.4</Version>
     <PackageReleaseNotes>panda自用</PackageReleaseNotes>
     <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>OpenAI-DotNet.pfx</AssemblyOriginatorKeyFile>

@@ -1,4 +1,5 @@
-﻿using OpenAI.Audio;
+﻿using OpenAI.Assistants;
+using OpenAI.Audio;
 using OpenAI.Chat;
 using OpenAI.Completions;
 using OpenAI.Edits;
@@ -9,6 +10,7 @@ using OpenAI.FineTuning;
 using OpenAI.Images;
 using OpenAI.Models;
 using OpenAI.Moderations;
+using OpenAI.Threads;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -43,22 +45,24 @@ namespace OpenAI
 
             if (OpenAIAuthentication?.ApiKey is null)
             {
-                throw new AuthenticationException("You must provide API authentication.  Please refer to https://github.com/RageAgainstThePixel/OpenAI-DotNet#authentication for details.");
+                throw new AuthenticationException("You must provide API authentication. ");
             }
 
             Client = SetupClient(client);
             ModelsEndpoint = new ModelsEndpoint(this);
-            CompletionsEndpoint = new CompletionsEndpoint(this);
             ChatEndpoint = new ChatEndpoint(this);
-#pragma warning disable CS0612 // Type or member is obsolete
-            EditsEndpoint = new EditsEndpoint(this);
-#pragma warning restore CS0612 // Type or member is obsolete
             ImagesEndPoint = new ImagesEndpoint(this);
             EmbeddingsEndpoint = new EmbeddingsEndpoint(this);
             AudioEndpoint = new AudioEndpoint(this);
             FilesEndpoint = new FilesEndpoint(this);
             FineTuningEndpoint = new FineTuningEndpoint(this);
             ModerationsEndpoint = new ModerationsEndpoint(this);
+            ThreadsEndpoint = new ThreadsEndpoint(this);
+            AssistantsEndpoint = new AssistantsEndpoint(this);
+#pragma warning disable CS0618 // Type or member is obsolete
+            CompletionsEndpoint = new CompletionsEndpoint(this);
+            EditsEndpoint = new EditsEndpoint(this);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private HttpClient SetupClient(HttpClient client = null)
@@ -67,15 +71,16 @@ namespace OpenAI
             {
                 PooledConnectionLifetime = TimeSpan.FromMinutes(15)
             });
-            client.DefaultRequestHeaders.Add("User-Agent", "OpenAI-DotNet");
+            client.DefaultRequestHeaders.Add("User-Agent", "OpenAI-DotNet-PanDa");
+            client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v1");
 
-            if (!OpenAIClientSettings.BaseRequestUrlFormat.Contains(OpenAIClientSettings.AzureOpenAIDomain) &&
-                (string.IsNullOrWhiteSpace(OpenAIAuthentication.ApiKey) ||
-                 (!OpenAIAuthentication.ApiKey.Contains(AuthInfo.SecretKeyPrefix) &&
-                  !OpenAIAuthentication.ApiKey.Contains(AuthInfo.SessionKeyPrefix))))
-            {
-                throw new InvalidCredentialException($"{OpenAIAuthentication.ApiKey} must start with '{AuthInfo.SecretKeyPrefix}'");
-            }
+            //if (!OpenAIClientSettings.BaseRequestUrlFormat.Contains(OpenAIClientSettings.AzureOpenAIDomain) &&
+            //    (string.IsNullOrWhiteSpace(OpenAIAuthentication.ApiKey) ||
+            //     (!OpenAIAuthentication.ApiKey.Contains(AuthInfo.SecretKeyPrefix) &&
+            //      !OpenAIAuthentication.ApiKey.Contains(AuthInfo.SessionKeyPrefix))))
+            //{
+            //    throw new InvalidCredentialException($"{OpenAIAuthentication.ApiKey} must start with '{AuthInfo.SecretKeyPrefix}'");
+            //}
 
             if (OpenAIClientSettings.UseOAuthAuthentication)
             {
@@ -102,13 +107,10 @@ namespace OpenAI
         /// <summary>
         /// The <see cref="JsonSerializationOptions"/> to use when making calls to the API.
         /// </summary>
-        internal static readonly JsonSerializerOptions JsonSerializationOptions = new JsonSerializerOptions
+        internal static JsonSerializerOptions JsonSerializationOptions { get; } = new JsonSerializerOptions
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters =
-            {
-                new JsonStringEnumConverterFactory()
-            }
+            Converters = { new JsonStringEnumConverterFactory() }
         };
 
         /// <summary>
@@ -122,7 +124,7 @@ namespace OpenAI
         internal OpenAIClientSettings OpenAIClientSettings { get; }
 
         /// <summary>
-        /// Enables or disables debugging for the whole client.
+        /// Enables or disables debugging for all endpoints.
         /// </summary>
         public bool EnableDebug { get; set; }
 
@@ -134,27 +136,10 @@ namespace OpenAI
         public ModelsEndpoint ModelsEndpoint { get; }
 
         /// <summary>
-        /// Text generation is the core function of the API. You give the API a prompt, and it generates a completion.
-        /// The way you “program” the API to do a task is by simply describing the task in plain english or providing
-        /// a few written examples. This simple approach works for a wide range of use cases, including summarization,
-        /// translation, grammar correction, question answering, chatbots, composing emails, and much more
-        /// (see the prompt library for inspiration).<br/>
-        /// <see href="https://platform.openai.com/docs/api-reference/completions"/>
-        /// </summary>
-        public CompletionsEndpoint CompletionsEndpoint { get; }
-
-        /// <summary>
         /// Given a chat conversation, the model will return a chat completion response.<br/>
         /// <see href="https://platform.openai.com/docs/api-reference/chat"/>
         /// </summary>
         public ChatEndpoint ChatEndpoint { get; }
-
-        /// <summary>
-        /// Given a prompt and an instruction, the model will return an edited version of the prompt.<br/>
-        /// <see href="https://platform.openai.com/docs/api-reference/edits"/>
-        /// </summary>
-        [Obsolete]
-        public EditsEndpoint EditsEndpoint { get; }
 
         /// <summary>
         /// Given a prompt and/or an input image, the model will generate a new image.<br/>
@@ -182,7 +167,8 @@ namespace OpenAI
 
         /// <summary>
         /// Manage fine-tuning jobs to tailor a model to your specific training data.<br/>
-        /// <see href="https://platform.openai.com/docs/guides/fine-tuning"/>
+        /// <see href="https://platform.openai.com/docs/guides/fine-tuning"/><br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/fine-tuning"/>
         /// </summary>
         public FineTuningEndpoint FineTuningEndpoint { get; }
 
@@ -192,5 +178,35 @@ namespace OpenAI
         /// <see href="https://platform.openai.com/docs/api-reference/moderations"/>
         /// </summary>
         public ModerationsEndpoint ModerationsEndpoint { get; }
+
+        /// <summary>
+        /// Build assistants that can call models and use tools to perform tasks.<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/assistants"/>
+        /// </summary>
+        public AssistantsEndpoint AssistantsEndpoint { get; }
+
+        /// <summary>
+        /// Create threads that assistants can interact with.<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/threads"/>
+        /// </summary>
+        public ThreadsEndpoint ThreadsEndpoint { get; }
+
+        /// <summary>
+        /// Text generation is the core function of the API. You give the API a prompt, and it generates a completion.
+        /// The way you “program” the API to do a task is by simply describing the task in plain english or providing
+        /// a few written examples. This simple approach works for a wide range of use cases, including summarization,
+        /// translation, grammar correction, question answering, chatbots, composing emails, and much more
+        /// (see the prompt library for inspiration).<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/completions"/>
+        /// </summary>
+        [Obsolete("Deprecated")]
+        public CompletionsEndpoint CompletionsEndpoint { get; }
+
+        /// <summary>
+        /// Given a prompt and an instruction, the model will return an edited version of the prompt.<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/edits"/>
+        /// </summary>
+        [Obsolete("Deprecated")]
+        public EditsEndpoint EditsEndpoint { get; }
     }
 }

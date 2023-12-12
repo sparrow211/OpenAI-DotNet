@@ -17,11 +17,9 @@ namespace OpenAI.Tests
             await File.WriteAllTextAsync("test.jsonl", testData);
             Assert.IsTrue(File.Exists("test.jsonl"));
             var result = await OpenAIClient.FilesEndpoint.UploadFileAsync("test.jsonl", "fine-tune");
-
             Assert.IsNotNull(result);
             Assert.IsTrue(result.FileName == "test.jsonl");
             Console.WriteLine($"{result.Id} -> {result.Object}");
-
             File.Delete("test.jsonl");
             Assert.IsFalse(File.Exists("test.jsonl"));
         }
@@ -30,12 +28,12 @@ namespace OpenAI.Tests
         public async Task Test_02_ListFiles()
         {
             Assert.IsNotNull(OpenAIClient.FilesEndpoint);
-            var result = await OpenAIClient.FilesEndpoint.ListFilesAsync();
+            var fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();
 
-            Assert.IsNotNull(result);
-            Assert.IsNotEmpty(result);
+            Assert.IsNotNull(fileList);
+            Assert.IsNotEmpty(fileList);
 
-            foreach (var file in result)
+            foreach (var file in fileList)
             {
                 var fileInfo = await OpenAIClient.FilesEndpoint.GetFileInfoAsync(file);
                 Assert.IsNotNull(fileInfo);
@@ -47,12 +45,12 @@ namespace OpenAI.Tests
         public async Task Test_03_DownloadFile()
         {
             Assert.IsNotNull(OpenAIClient.FilesEndpoint);
-            var files = await OpenAIClient.FilesEndpoint.ListFilesAsync();
+            var fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();
 
-            Assert.IsNotNull(files);
-            Assert.IsNotEmpty(files);
+            Assert.IsNotNull(fileList);
+            Assert.IsNotEmpty(fileList);
 
-            var testFileData = files[0];
+            var testFileData = fileList[0];
             var result = await OpenAIClient.FilesEndpoint.DownloadFileAsync(testFileData, Directory.GetCurrentDirectory());
 
             Assert.IsNotNull(result);
@@ -67,20 +65,20 @@ namespace OpenAI.Tests
         public async Task Test_04_DeleteFiles()
         {
             Assert.IsNotNull(OpenAIClient.FilesEndpoint);
-            var files = await OpenAIClient.FilesEndpoint.ListFilesAsync();
-            Assert.IsNotNull(files);
-            Assert.IsNotEmpty(files);
+            var fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();
+            Assert.IsNotNull(fileList);
+            Assert.IsNotEmpty(fileList);
 
-            foreach (var file in files)
+            foreach (var file in fileList)
             {
-                var result = await OpenAIClient.FilesEndpoint.DeleteFileAsync(file);
-                Assert.IsTrue(result);
+                var isDeleted = await OpenAIClient.FilesEndpoint.DeleteFileAsync(file);
+                Assert.IsTrue(isDeleted);
                 Console.WriteLine($"{file.Id} -> deleted");
             }
 
-            files = await OpenAIClient.FilesEndpoint.ListFilesAsync();
-            Assert.IsNotNull(files);
-            Assert.IsEmpty(files);
+            fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();
+            Assert.IsNotNull(fileList);
+            Assert.IsEmpty(fileList);
         }
     }
 }
