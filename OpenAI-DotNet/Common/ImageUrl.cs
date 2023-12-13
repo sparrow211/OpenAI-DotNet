@@ -23,13 +23,13 @@ namespace OpenAI
         }
 
         [JsonInclude]
-        [JsonPropertyName("url")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Url { get; private set; }
-
-        [JsonInclude]
         [JsonPropertyName("detail")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageDetail Detail { get; private set; }
+        public ImageDetail Detail { get; set; }
+
+        [JsonInclude]
+        [JsonPropertyName("url")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Url { get; set; }
     }
 }
