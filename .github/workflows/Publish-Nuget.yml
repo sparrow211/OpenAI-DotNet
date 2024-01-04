@@ -8,13 +8,12 @@ on:
       - OpenAI-DotNet/**
   pull_request:
     branches:
-      - '*'
+      - dev
     paths:
       - OpenAI-DotNet/**
     types:
       - opened
       - synchronize
-
   workflow_dispatch:
     inputs:
       dotnet-version:
