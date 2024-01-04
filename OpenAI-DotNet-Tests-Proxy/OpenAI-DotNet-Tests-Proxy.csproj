@@ -8,7 +8,4 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>OpenAI.Tests.Proxy</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\OpenAI-DotNet-Proxy\OpenAI-DotNet-Proxy.csproj" />
-  </ItemGroup>
 </Project>
