@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using NUnit.Framework;
 using OpenAI.Chat;
 using System;
 using System.Collections.Generic;
@@ -13,7 +15,7 @@ namespace OpenAI.Tests
         public async Task Test_01_UploadFile()
         {
             Assert.IsNotNull(OpenAIClient.FilesEndpoint);
-            var testData = new Conversation(new List<Message> { new Message(Role.Assistant, "I'm a learning language model") });
+            var testData = new Conversation(new List<Message> { new(Role.Assistant, "I'm a learning language model") });
             await File.WriteAllTextAsync("test.jsonl", testData);
             Assert.IsTrue(File.Exists("test.jsonl"));
             var result = await OpenAIClient.FilesEndpoint.UploadFileAsync("test.jsonl", "fine-tune");
@@ -62,7 +64,23 @@ namespace OpenAI.Tests
         }
 
         [Test]
-        public async Task Test_04_DeleteFiles()
+        public async Task Test_04_RetrieveFileStreamAsync()
+        {
+            Assert.IsNotNull(OpenAIClient.FilesEndpoint);
+            var fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();
+
+            Assert.IsNotNull(fileList);
+            Assert.IsNotEmpty(fileList);
+
+            var testFileData = fileList[0];
+            var result = await OpenAIClient.FilesEndpoint.RetrieveFileStreamAsync(testFileData);
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.CanRead);
+        }
+
+        [Test]
+        public async Task Test_05_DeleteFiles()
         {
             Assert.IsNotNull(OpenAIClient.FilesEndpoint);
             var fileList = await OpenAIClient.FilesEndpoint.ListFilesAsync();

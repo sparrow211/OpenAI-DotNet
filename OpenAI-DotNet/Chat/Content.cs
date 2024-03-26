@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Text.Json.Serialization;
 using OpenAI.Extensions;
 
@@ -67,8 +69,8 @@ namespace OpenAI.Chat
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public ImageUrl ImageUrl { get; set; }
 
-        public static implicit operator Content(string input) => new Content(ContentType.Text, input);
+        public static implicit operator Content(string input) => new(ContentType.Text, input);
 
-        public static implicit operator Content(ImageUrl imageUrl) => new Content(imageUrl);
+        public static implicit operator Content(ImageUrl imageUrl) => new(imageUrl);
     }
 }

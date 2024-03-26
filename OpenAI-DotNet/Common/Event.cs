@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.Text.Json.Serialization;
 
 namespace OpenAI
@@ -28,6 +30,6 @@ namespace OpenAI
         [JsonPropertyName("message")]
         public string Message { get; private set; }
 
-        public static implicit operator EventResponse(Event @event) => new EventResponse(@event);
+        public static implicit operator EventResponse(Event @event) => new(@event);
     }
 }

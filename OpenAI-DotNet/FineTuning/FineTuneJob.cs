@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -82,7 +84,7 @@ namespace OpenAI.FineTuning
         [JsonIgnore]
         public IReadOnlyList<Event> Events { get; internal set; } = new List<Event>();
 
-        public static implicit operator FineTuneJobResponse(FineTuneJob job) => new FineTuneJobResponse(job);
+        public static implicit operator FineTuneJobResponse(FineTuneJob job) => new(job);
 
         public static implicit operator string(FineTuneJob job) => job?.ToString();
 

@@ -6,11 +6,11 @@
     <Authors>PanDa</Authors>
     <Product>AITools-OpenAI</Product>
     <Description>		[chatgpt-web](https://github.com/Chanzhaoyu/chatgpt-web).	</Description>
-    <Copyright>2023</Copyright>
+    <Copyright>2024</Copyright>
     <PackageLicenseExpression>CC0-1.0</PackageLicenseExpression>
     <PackageTags>OpenAI, AI, ML, API, gpt-4, gpt-3.5-tubo, gpt-3, chatGPT, chat-gpt, gpt-2, gpt, dall-e-2, dall-e-3</PackageTags>
     <Title>AITools OpenAI API</Title>
-    <Version>7.5.0</Version>
+    <Version>7.7.6</Version>
     <PackageReleaseNotes>panda自用</PackageReleaseNotes>
     <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>OpenAI-DotNet.pfx</AssemblyOriginatorKeyFile>
@@ -21,16 +21,4 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <IncludeSymbols>True</IncludeSymbols>
   </PropertyGroup>
-  <ItemGroup>
-    <None Include="..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="Assets\OpenAI-DotNet-Icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
 </Project>

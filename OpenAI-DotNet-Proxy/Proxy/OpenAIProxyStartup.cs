@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +26,7 @@ namespace OpenAI.Proxy
         private IAuthenticationFilter authenticationFilter;
 
         // Copied from https://github.com/microsoft/reverse-proxy/blob/51d797986b1fea03500a1ad173d13a1176fb5552/src/ReverseProxy/Forwarder/RequestUtilities.cs#L61-L83
-        private static readonly HashSet<string> ExcludedHeaders = new HashSet<string>
+        private static readonly HashSet<string> ExcludedHeaders = new()
         {
             HeaderNames.Connection,
             HeaderNames.TransferEncoding,

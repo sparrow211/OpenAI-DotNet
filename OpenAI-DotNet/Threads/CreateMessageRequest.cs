@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -6,20 +8,19 @@ namespace OpenAI.Threads
 {
     public sealed class CreateMessageRequest
     {
-        public static implicit operator CreateMessageRequest(string content)
-            => new CreateMessageRequest(content);
+        public static implicit operator CreateMessageRequest(string content) => new(content);
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="content"></param>
-        /// <param name="fieldIds"></param>
+        /// <param name="fileIds"></param>
         /// <param name="metadata"></param>
-        public CreateMessageRequest(string content, IEnumerable<string> fieldIds = null, IReadOnlyDictionary<string, string> metadata = null)
+        public CreateMessageRequest(string content, IEnumerable<string> fileIds = null, IReadOnlyDictionary<string, string> metadata = null)
         {
             Role = Role.User;
             Content = content;
-            FileIds = fieldIds?.ToList();
+            FileIds = fileIds?.ToList();
             Metadata = metadata;
         }
 

@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.IO;
 
 namespace OpenAI.Audio
@@ -9,7 +11,7 @@ namespace OpenAI.Audio
         /// Constructor.
         /// </summary>
         /// <param name="audioPath">
-        /// The audio file to translate, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm
+        /// The audio file to translate, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         /// </param>
         /// <param name="model">
         /// ID of the model to use. Only whisper-1 is currently available.
@@ -31,7 +33,7 @@ namespace OpenAI.Audio
         public AudioTranslationRequest(
             string audioPath,
             string model = null,
-            string prompt = null,
+            string prompt = "response should be in english.",
             AudioResponseFormat responseFormat = AudioResponseFormat.Json,
             float? temperature = null)
             : this(File.OpenRead(audioPath), Path.GetFileName(audioPath), model, prompt, responseFormat, temperature)
@@ -42,7 +44,7 @@ namespace OpenAI.Audio
         /// Constructor.
         /// </summary>
         /// <param name="audio">
-        /// The audio file to translate, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
+        /// The audio file to translate, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         /// </param>
         /// <param name="audioName">
         /// The name of the audio file to translate.
@@ -68,7 +70,7 @@ namespace OpenAI.Audio
             Stream audio,
             string audioName,
             string model = null,
-            string prompt = null,
+            string prompt = "response should be in english.",
             AudioResponseFormat responseFormat = AudioResponseFormat.Json,
             float? temperature = null)
         {

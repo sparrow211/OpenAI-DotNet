@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using NUnit.Framework;
 using System;
 using System.IO;
@@ -6,7 +8,7 @@ using System.Text.Json;
 
 namespace OpenAI.Tests
 {
-    internal class TestFixture_00_00_Authentication
+    internal class TestFixture_00_01_Authentication
     {
         [SetUp]
         public void Setup()

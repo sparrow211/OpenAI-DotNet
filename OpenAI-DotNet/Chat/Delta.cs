@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -45,6 +47,6 @@ namespace OpenAI.Chat
 
         public override string ToString() => Content ?? string.Empty;
 
-        public static implicit operator string(Delta delta) => delta.ToString();
+        public static implicit operator string(Delta delta) => delta?.ToString();
     }
 }

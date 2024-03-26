@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.IO;
 using System.Text.Json;
 
@@ -34,7 +36,7 @@ namespace OpenAI
         /// Allows implicit casting from a string, so that a simple string API key can be provided in place of an instance of <see cref="OpenAIAuthentication"/>.
         /// </summary>
         /// <param name="key">The API key to convert into a <see cref="OpenAIAuthentication"/>.</param>
-        public static implicit operator OpenAIAuthentication(string key) => new OpenAIAuthentication(key);
+        public static implicit operator OpenAIAuthentication(string key) => new(key);
 
         private OpenAIAuthentication(AuthInfo authInfo) => this.authInfo = authInfo;
 
@@ -206,8 +208,8 @@ namespace OpenAI
                                     apiKey = nextPart.Trim();
                                     break;
                                 case ORGANIZATION:
-                                case OPENAI_ORGANIZATION_ID:
                                 case OPEN_AI_ORGANIZATION_ID:
+                                case OPENAI_ORGANIZATION_ID:
                                     organization = nextPart.Trim();
                                     break;
                             }

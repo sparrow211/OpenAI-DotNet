@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -99,7 +101,7 @@ namespace OpenAI.FineTuning
         [JsonPropertyName("trained_tokens")]
         public int? TrainedTokens { get; private set; }
 
-        private List<EventResponse> events = new List<EventResponse>();
+        private List<EventResponse> events = new();
 
         [JsonIgnore]
         public IReadOnlyList<EventResponse> Events

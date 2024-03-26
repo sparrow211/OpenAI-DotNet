@@ -1,8 +1,8 @@
-﻿using OpenAI.Assistants;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using OpenAI.Assistants;
 using OpenAI.Audio;
 using OpenAI.Chat;
-using OpenAI.Completions;
-using OpenAI.Edits;
 using OpenAI.Embeddings;
 using OpenAI.Extensions;
 using OpenAI.Files;
@@ -55,7 +55,7 @@ namespace OpenAI
 
             if (OpenAIAuthentication?.ApiKey is null)
             {
-                throw new AuthenticationException("You must provide API authentication. ");
+                throw new AuthenticationException("You must provide API authentication.");
             }
 
             Client = SetupClient(client);
@@ -69,10 +69,6 @@ namespace OpenAI
             ModerationsEndpoint = new ModerationsEndpoint(this);
             ThreadsEndpoint = new ThreadsEndpoint(this);
             AssistantsEndpoint = new AssistantsEndpoint(this);
-#pragma warning disable CS0618 // Type or member is obsolete
-            CompletionsEndpoint = new CompletionsEndpoint(this);
-            EditsEndpoint = new EditsEndpoint(this);
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         ~OpenAIClient()
@@ -118,10 +114,11 @@ namespace OpenAI
         /// <summary>
         /// The <see cref="JsonSerializationOptions"/> to use when making calls to the API.
         /// </summary>
-        internal static JsonSerializerOptions JsonSerializationOptions { get; } = new JsonSerializerOptions
+        internal static JsonSerializerOptions JsonSerializationOptions { get; } = new()
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new JsonStringEnumConverterFactory() }
+            Converters = { new JsonStringEnumConverterFactory() },
+            ReferenceHandler = ReferenceHandler.IgnoreCycles,
         };
 
         /// <summary>
@@ -153,24 +150,6 @@ namespace OpenAI
         /// <see href="https://platform.openai.com/docs/api-reference/chat"/>
         /// </summary>
         public ChatEndpoint ChatEndpoint { get; }
-
-        /// <summary>
-        /// Text generation is the core function of the API. You give the API a prompt, and it generates a completion.
-        /// The way you “program” the API to do a task is by simply describing the task in plain english or providing
-        /// a few written examples. This simple approach works for a wide range of use cases, including summarization,
-        /// translation, grammar correction, question answering, chatbots, composing emails, and much more
-        /// (see the prompt library for inspiration).<br/>
-        /// <see href="https://platform.openai.com/docs/api-reference/completions"/>
-        /// </summary>
-        [Obsolete("Deprecated")]
-        public CompletionsEndpoint CompletionsEndpoint { get; }
-
-        /// <summary>
-        /// Given a prompt and an instruction, the model will return an edited version of the prompt.<br/>
-        /// <see href="https://platform.openai.com/docs/api-reference/edits"/>
-        /// </summary>
-        [Obsolete("Deprecated")]
-        public EditsEndpoint EditsEndpoint { get; }
 
         /// <summary>
         /// Get a vector representation of a given input that can be easily consumed by machine learning models and algorithms.<br/>
@@ -236,10 +215,13 @@ namespace OpenAI
             client.DefaultRequestHeaders.Add("User-Agent", "OpenAI-DotNet-PanDa");
             client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v1");
 
-            //if (string.IsNullOrWhiteSpace(OpenAIAuthentication.ApiKey))
-            //{
-            //    throw new InvalidCredentialException($"{OpenAIAuthentication.ApiKey} must start with '{AuthInfo.SecretKeyPrefix}'");
-            //}
+            if (OpenAIClientSettings.BaseRequestUrlFormat.Contains(OpenAIClientSettings.OpenAIDomain) &&
+                (string.IsNullOrWhiteSpace(OpenAIAuthentication.ApiKey) ||
+                 (!OpenAIAuthentication.ApiKey.Contains(AuthInfo.SecretKeyPrefix) &&
+                  !OpenAIAuthentication.ApiKey.Contains(AuthInfo.SessionKeyPrefix))))
+            {
+                throw new InvalidCredentialException($"{OpenAIAuthentication.ApiKey} must start with '{AuthInfo.SecretKeyPrefix}'");
+            }
 
             if (OpenAIClientSettings.UseOAuthAuthentication)
             {

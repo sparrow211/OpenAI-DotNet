@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using OpenAI.Models;
+using System;
 using System.IO;
 
 namespace OpenAI.Images
@@ -29,14 +32,18 @@ namespace OpenAI.Images
         /// Must be one of url or b64_json.
         /// <para/> Defaults to <see cref="ResponseFormat.Url"/>
         /// </param>
+        /// <param name="model">
+        /// The model to use for image generation.
+        /// </param>
         public ImageEditRequest(
             string imagePath,
             string prompt,
             int numberOfResults = 1,
             ImageSize size = ImageSize.Large,
             string user = null,
-            ResponseFormat responseFormat = ResponseFormat.Url)
-            : this(imagePath, null, prompt, numberOfResults, size, user, responseFormat)
+            ResponseFormat responseFormat = ResponseFormat.Url,
+            Model model = null)
+            : this(imagePath, null, prompt, numberOfResults, size, user, responseFormat, model)
         {
         }
 
@@ -68,6 +75,9 @@ namespace OpenAI.Images
         /// Must be one of url or b64_json.
         /// <para/> Defaults to <see cref="ResponseFormat.Url"/>
         /// </param>
+        /// <param name="model">
+        /// The model to use for image generation.
+        /// </param>
         public ImageEditRequest(
             string imagePath,
             string maskPath,
@@ -75,7 +85,8 @@ namespace OpenAI.Images
             int numberOfResults = 1,
             ImageSize size = ImageSize.Large,
             string user = null,
-            ResponseFormat responseFormat = ResponseFormat.Url)
+            ResponseFormat responseFormat = ResponseFormat.Url,
+            Model model = null)
             : this(
                 File.OpenRead(imagePath),
                 Path.GetFileName(imagePath),
@@ -85,7 +96,8 @@ namespace OpenAI.Images
                 numberOfResults,
                 size,
                 user,
-                responseFormat)
+                responseFormat,
+                model)
         {
         }
 
@@ -114,6 +126,9 @@ namespace OpenAI.Images
         /// Must be one of url or b64_json.
         /// <para/> Defaults to <see cref="ResponseFormat.Url"/>
         /// </param>
+        /// <param name="model">
+        /// The model to use for image generation.
+        /// </param>
         public ImageEditRequest(
             Stream image,
             string imageName,
@@ -121,8 +136,9 @@ namespace OpenAI.Images
             int numberOfResults = 1,
             ImageSize size = ImageSize.Large,
             string user = null,
-            ResponseFormat responseFormat = ResponseFormat.Url)
-            : this(image, imageName, null, null, prompt, numberOfResults, size, user, responseFormat)
+            ResponseFormat responseFormat = ResponseFormat.Url,
+            Model model = null)
+            : this(image, imageName, null, null, prompt, numberOfResults, size, user, responseFormat, model)
         {
         }
 
@@ -156,6 +172,9 @@ namespace OpenAI.Images
         /// Must be one of url or b64_json.
         /// <para/> Defaults to <see cref="ResponseFormat.Url"/>
         /// </param>
+        /// <param name="model">
+        /// The model to use for image generation.
+        /// </param>
         public ImageEditRequest(
             Stream image,
             string imageName,
@@ -165,8 +184,9 @@ namespace OpenAI.Images
             int numberOfResults = 1,
             ImageSize size = ImageSize.Large,
             string user = null,
-            ResponseFormat responseFormat = ResponseFormat.Url)
-            : base(numberOfResults, size, responseFormat, user)
+            ResponseFormat responseFormat = ResponseFormat.Url,
+            Model model = null)
+            : base(model, numberOfResults, size, responseFormat, user)
         {
             Image = image;
 

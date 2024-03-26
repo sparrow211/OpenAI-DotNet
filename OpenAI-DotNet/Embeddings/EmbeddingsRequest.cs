@@ -1,4 +1,6 @@
-﻿using OpenAI.Models;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using OpenAI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,18 +20,21 @@ namespace OpenAI.Embeddings
         /// </param>
         /// <param name="model">
         /// ID of the model to use.<br/>
-        /// Defaults to: <see cref="Models.Model.Embedding_Ada_002"/>
+        /// Defaults to: <see cref="Model.Embedding_Ada_002"/>
         /// </param>
         /// <param name="user">
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </param>
-        /// <exception cref="ArgumentNullException">A valid <see cref="input"/> string is a Required parameter.</exception>
-        public EmbeddingsRequest(string input, string model = null, string user = null)
-            : this(new List<string> { input }, model, user)
+        /// <param name="dimensions">
+        /// The number of dimensions the resulting output embeddings should have.
+        /// Only supported in text-embedding-3 and later models
+        /// </param>
+        public EmbeddingsRequest(string input, string model = null, string user = null, int? dimensions = null)
+            : this(new List<string> { input }, model, user, dimensions)
         {
             if (string.IsNullOrWhiteSpace(input))
             {
-                throw new ArgumentNullException(nameof(input));
+                throw new ArgumentNullException(nameof(input), $"Missing required {nameof(input)} parameter");
             }
         }
 
@@ -42,14 +47,17 @@ namespace OpenAI.Embeddings
         /// Each input must not exceed 8192 tokens in length.
         /// </param>
         /// <param name="model">
-        /// The model id to use.
+        /// The model id to use.<br/>
         /// Defaults to: <see cref="Model.Embedding_Ada_002"/>
         /// </param>
         /// <param name="user">
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </param>
-        /// <exception cref="ArgumentNullException">A valid <see cref="input"/> string is a Required parameter.</exception>
-        public EmbeddingsRequest(IEnumerable<string> input, string model = null, string user = null)
+        /// <param name="dimensions">
+        /// The number of dimensions the resulting output embeddings should have.
+        /// Only supported in text-embedding-3 and later models
+        /// </param>
+        public EmbeddingsRequest(IEnumerable<string> input, string model = null, string user = null, int? dimensions = null)
         {
             Input = input?.ToList();
 
@@ -60,6 +68,7 @@ namespace OpenAI.Embeddings
 
             Model = string.IsNullOrWhiteSpace(model) ? Models.Model.Embedding_Ada_002 : model;
             User = user;
+            Dimensions = dimensions;
         }
 
         [JsonPropertyName("input")]
@@ -67,6 +76,9 @@ namespace OpenAI.Embeddings
 
         [JsonPropertyName("model")]
         public string Model { get; }
+
+        [JsonPropertyName("dimensions")]
+        public int? Dimensions { get; }
 
         [JsonPropertyName("user")]
         public string User { get; }

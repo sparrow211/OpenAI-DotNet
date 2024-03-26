@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -37,6 +39,6 @@ namespace OpenAI.Threads
         [JsonPropertyName("metadata")]
         public IReadOnlyDictionary<string, string> Metadata { get; }
 
-        public static implicit operator CreateThreadRequest(string message) => new CreateThreadRequest(new[] { new Message(message) });
+        public static implicit operator CreateThreadRequest(string message) => new(new[] { new Message(message) });
     }
 }

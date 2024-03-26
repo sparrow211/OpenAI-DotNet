@@ -1,11 +1,13 @@
-﻿using System.Collections.Generic;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System.Collections.Generic;
 using System.Linq;
 
 namespace OpenAI
 {
-    public abstract class BaseEndPoint
+    public abstract class OpenAIBaseEndpoint
     {
-        protected BaseEndPoint(OpenAIClient client) => this.client = client;
+        protected OpenAIBaseEndpoint(OpenAIClient client) => this.client = client;
 
         // ReSharper disable once InconsistentNaming
         protected readonly OpenAIClient client;

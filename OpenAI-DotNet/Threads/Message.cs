@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -6,7 +8,7 @@ namespace OpenAI.Threads
 {
     public sealed class Message
     {
-        public static implicit operator Message(string content) => new Message(content);
+        public static implicit operator Message(string content) => new(content);
 
         /// <summary>
         /// Constructor.

@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using OpenAI.Extensions;
 using System;
 using System.Collections.Generic;
@@ -7,7 +9,7 @@ namespace OpenAI.Threads
 {
     /// <summary>
     /// An invocation of an Assistant on a Thread.
-    /// The Assistant uses it’s configuration and the Thread’s Messages to perform tasks by calling models and tools.
+    /// The Assistant uses it's configuration and the Thread's Messages to perform tasks by calling models and tools.
     /// As part of a Run, the Assistant appends Messages to the Thread.
     /// </summary>
     public sealed class RunResponse : BaseResponse
@@ -175,6 +177,13 @@ namespace OpenAI.Threads
         [JsonInclude]
         [JsonPropertyName("metadata")]
         public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+
+        /// <summary>
+        /// Usage statistics related to the run. This value will be `null` if the run is not in a terminal state (i.e. `in_progress`, `queued`, etc.).
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("usage")]
+        public Usage Usage { get; private set; }
 
         public static implicit operator string(RunResponse run) => run?.ToString();
 

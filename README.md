@@ -34,7 +34,11 @@ Install-Package OpenAI-DotNet
 >
 >[![openupm](https://img.shields.io/npm/v/com.openai.unity?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.openai.unity/)
 
-## Documentation
+## [Documentation](https://rageagainstthepixel.github.io/OpenAI-DotNet)
+
+> Check out our new api docs!
+
+https://rageagainstthepixel.github.io/OpenAI-DotNet :new:
 
 ### Table of Contents
 
@@ -47,47 +51,47 @@ Install-Package OpenAI-DotNet
   - [List Models](#list-models)
   - [Retrieve Models](#retrieve-model)
   - [Delete Fine Tuned Model](#delete-fine-tuned-model)
-- [Assistants](#assistants) :new:
-  - [List Assistants](#list-assistants) :new:
-  - [Create Assistant](#create-assistant) :new:
-  - [Retrieve Assistant](#retrieve-assistant) :new:
-  - [Modify Assistant](#modify-assistant) :new:
-  - [Delete Assistant](#delete-assistant) :new:
-  - [List Assistant Files](#list-assistant-files) :new:
-  - [Attach File to Assistant](#attach-file-to-assistant) :new:
-  - [Upload File to Assistant](#upload-file-to-assistant) :new:
-  - [Retrieve File from Assistant](#retrieve-file-from-assistant) :new:
-  - [Remove File from Assistant](#remove-file-from-assistant) :new:
-  - [Delete File from Assistant](#delete-file-from-assistant) :new:
-- [Threads](#threads) :new:
-  - [Create Thread](#create-thread) :new:
-  - [Create Thread and Run](#create-thread-and-run) :new:
-  - [Retrieve Thread](#retrieve-thread) :new:
-  - [Modify Thread](#modify-thread) :new:
-  - [Delete Thread](#delete-thread) :new:
-  - [Thread Messages](#thread-messages) :new:
-    - [List Messages](#list-thread-messages) :new:
-    - [Create Message](#create-thread-message) :new:
-    - [Retrieve Message](#retrieve-thread-message) :new:
-    - [Modify Message](#modify-thread-message) :new:
-    - [Thread Message Files](#thread-message-files) :new:
-      - [List Message Files](#list-thread-message-files) :new:
-      - [Retrieve Message File](#retrieve-thread-message-file) :new:
-  - [Thread Runs](#thread-runs) :new:
-    - [List Runs](#list-thread-runs) :new:
-    - [Create Run](#create-thread-run) :new:
-    - [Retrieve Run](#retrieve-thread-run) :new:
-    - [Modify Run](#modify-thread-run) :new:
-    - [Submit Tool Outputs to Run](#thread-submit-tool-outputs-to-run) :new:
-    - [List Run Steps](#list-thread-run-steps) :new:
-    - [Retrieve Run Step](#retrieve-thread-run-step) :new:
-    - [Cancel Run](#cancel-thread-run) :new:
+- [Assistants](#assistants)
+  - [List Assistants](#list-assistants)
+  - [Create Assistant](#create-assistant)
+  - [Retrieve Assistant](#retrieve-assistant)
+  - [Modify Assistant](#modify-assistant)
+  - [Delete Assistant](#delete-assistant)
+  - [List Assistant Files](#list-assistant-files)
+  - [Attach File to Assistant](#attach-file-to-assistant)
+  - [Upload File to Assistant](#upload-file-to-assistant)
+  - [Retrieve File from Assistant](#retrieve-file-from-assistant)
+  - [Remove File from Assistant](#remove-file-from-assistant)
+  - [Delete File from Assistant](#delete-file-from-assistant)
+- [Threads](#threads)
+  - [Create Thread](#create-thread)
+  - [Create Thread and Run](#create-thread-and-run)
+  - [Retrieve Thread](#retrieve-thread)
+  - [Modify Thread](#modify-thread)
+  - [Delete Thread](#delete-thread)
+  - [Thread Messages](#thread-messages)
+    - [List Messages](#list-thread-messages)
+    - [Create Message](#create-thread-message)
+    - [Retrieve Message](#retrieve-thread-message)
+    - [Modify Message](#modify-thread-message)
+    - [Thread Message Files](#thread-message-files)
+      - [List Message Files](#list-thread-message-files)
+      - [Retrieve Message File](#retrieve-thread-message-file)
+  - [Thread Runs](#thread-runs)
+    - [List Runs](#list-thread-runs)
+    - [Create Run](#create-thread-run)
+    - [Retrieve Run](#retrieve-thread-run)
+    - [Modify Run](#modify-thread-run)
+    - [Submit Tool Outputs to Run](#thread-submit-tool-outputs-to-run)
+    - [List Run Steps](#list-thread-run-steps)
+    - [Retrieve Run Step](#retrieve-thread-run-step)
+    - [Cancel Run](#cancel-thread-run)
 - [Chat](#chat)
   - [Chat Completions](#chat-completions)
   - [Streaming](#chat-streaming)
-  - [Tools](#chat-tools) :new:
-  - [Vision](#chat-vision) :new:
-  - [Json Mode](#chat-json-mode) :new:
+  - [Tools](#chat-tools)
+  - [Vision](#chat-vision)
+  - [Json Mode](#chat-json-mode)
 - [Audio](#audio)
   - [Create Speech](#create-speech)
   - [Create Transcription](#create-transcription)
@@ -112,10 +116,6 @@ Install-Package OpenAI-DotNet
   - [Create Embedding](#create-embeddings)
 - [Moderations](#moderations)
   - [Create Moderation](#create-moderation)
-- ~~[Completions](#completions)~~ :warning: Deprecated
-  - ~~[Streaming](#completion-streaming)~~ :warning: Deprecated
-- ~~[Edits](#edits)~~ :warning: Deprecated
-  - ~~[Create Edit](#create-edit)~~  :warning: Deprecated
 
 ### [Authentication](https://platform.openai.com/docs/api-reference/authentication)
 
@@ -398,7 +398,7 @@ Create an assistant with a model and instructions.
 
 ```csharp
 using var api = new OpenAIClient();
-var request = new CreateAssistantRequest("gpt-3.5-turbo-1106");
+var request = new CreateAssistantRequest("gpt-3.5-turbo");
 var assistant = await api.AssistantsEndpoint.CreateAssistantAsync(request);
 ```
 
@@ -418,10 +418,10 @@ Modifies an assistant.
 
 ```csharp
 using var api = new OpenAIClient();
-var createRequest = new CreateAssistantRequest("gpt-3.5-turbo-1106");
+var createRequest = new CreateAssistantRequest("gpt-3.5-turbo");
 var assistant = await api.AssistantsEndpoint.CreateAssistantAsync(createRequest);
-var modifyRequest = new CreateAssistantRequest("gpt-4-1106-preview");
-var modifiedAssistant = await api.AssistantsEndpoint.ModifyAsync(assistant.Id, modifyRequest);
+var modifyRequest = new CreateAssistantRequest("gpt-4-turbo-preview");
+var modifiedAssistant = await api.AssistantsEndpoint.ModifyAssistantAsync(assistant.Id, modifyRequest);
 // OR AssistantExtension for easier use!
 var modifiedAssistantEx = await assistant.ModifyAsync(modifyRequest);
 ```
@@ -550,7 +550,7 @@ var assistant = await api.AssistantsEndpoint.CreateAssistantAsync(
     new CreateAssistantRequest(
         name: "Math Tutor",
         instructions: "You are a personal math tutor. Answer questions briefly, in a sentence or less.",
-        model: "gpt-4-1106-preview"));
+        model: "gpt-4-turbo-preview"));
 var messages = new List<Message> { "I need to solve the equation `3x + 11 = 14`. Can you help me?" };
 var threadRequest = new CreateThreadRequest(messages);
 var run = await assistant.CreateThreadAndRunAsync(threadRequest);
@@ -726,7 +726,7 @@ var assistant = await api.AssistantsEndpoint.CreateAssistantAsync(
     new CreateAssistantRequest(
         name: "Math Tutor",
         instructions: "You are a personal math tutor. Answer questions briefly, in a sentence or less.",
-        model: "gpt-4-1106-preview"));
+        model: "gpt-4-turbo-preview"));
 var thread = await api.ThreadsEndpoint.CreateThreadAsync();
 var message = await thread.CreateMessageAsync("I need to solve the equation `3x + 11 = 14`. Can you help me?");
 var run = await thread.CreateRunAsync(assistant);
@@ -766,41 +766,38 @@ Console.WriteLine($"Modify run {run.Id} -> {run.Metadata["key"]}");
 
 ##### [Thread Submit Tool Outputs to Run](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs)
 
-When a run has the status: `requires_action` and `required_action.type` is `submit_tool_outputs`, this endpoint can be used to submit the outputs from the tool calls once they're all completed. All outputs must be submitted in a single request.
+When a run has the status: `requires_action` and `required_action.type` is `submit_tool_outputs`, this endpoint can be used to submit the outputs from the tool calls once they're all completed.
+All outputs must be submitted in a single request.
 
 ```csharp
 using var api = new OpenAIClient();
-var function = new Function(
-    nameof(WeatherService.GetCurrentWeather),
-    "Get the current weather in a given location",
-    new JsonObject
-    {
-        ["type"] = "object",
-        ["properties"] = new JsonObject
-        {
-            ["location"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "The city and state, e.g. San Francisco, CA"
-            },
-            ["unit"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["enum"] = new JsonArray { "celsius", "fahrenheit" }
-            }
-        },
-        ["required"] = new JsonArray { "location", "unit" }
-    });
-testAssistant = await api.AssistantsEndpoint.CreateAssistantAsync(new CreateAssistantRequest(tools: new Tool[] { function }));
-var run = await testAssistant.CreateThreadAndRunAsync("I'm in Kuala-Lumpur, please tell me what's the temperature in celsius now?");
+var tools = new List<Tool>
+{
+    // Use a predefined tool
+    Tool.Retrieval, Tool.CodeInterpreter,
+    // Or create a tool from a type and the name of the method you want to use for function calling
+    Tool.GetOrCreateTool(typeof(WeatherService), nameof(WeatherService.GetCurrentWeatherAsync)),
+    // Pass in an instance of an object to call a method on it
+    Tool.GetOrCreateTool(OpenAIClient.ImagesEndPoint, nameof(ImagesEndpoint.GenerateImageAsync))),
+    // Define func<,> callbacks
+    Tool.FromFunc("name_of_func", () => { /* callback function */ }),
+    Tool.FromFunc<T1,T2,TResult>("func_with_multiple_params", (t1, t2) => { /* logic that calculates return value */ return tResult; })
+};
+var assistantRequest = new CreateAssistantRequest(tools: tools, instructions: "You are a helpful weather assistant. Use the appropriate unit based on geographical location.");
+var testAssistant = await OpenAIClient.AssistantsEndpoint.CreateAssistantAsync(assistantRequest);
+var run = await testAssistant.CreateThreadAndRunAsync("I'm in Kuala-Lumpur, please tell me what's the temperature now?");
 // waiting while run is Queued and InProgress
 run = await run.WaitForStatusChangeAsync();
-var toolCall = run.RequiredAction.SubmitToolOutputs.ToolCalls[0];
-Console.WriteLine($"tool call arguments: {toolCall.FunctionCall.Arguments}");
-var functionArgs = JsonSerializer.Deserialize<WeatherArgs>(toolCall.FunctionCall.Arguments);
-var functionResult = WeatherService.GetCurrentWeather(functionArgs);
-var toolOutput = new ToolOutput(toolCall.Id, functionResult);
-run = await run.SubmitToolOutputsAsync(toolOutput);
+
+// Invoke all the tool call functions and return the tool outputs.
+var toolOutputs = await testAssistant.GetToolOutputsAsync(run.RequiredAction.SubmitToolOutputs.ToolCalls);
+
+foreach (var toolOutput in toolOutputs)
+{
+    Console.WriteLine($"tool call output: {toolOutput.Output}");
+}
+// submit the tool outputs
+run = await run.SubmitToolOutputsAsync(toolOutputs);
 // waiting while run in Queued and InProgress
 run = await run.WaitForStatusChangeAsync();
 var messages = await run.ListMessagesAsync();
@@ -923,13 +920,11 @@ Console.WriteLine(cumulativeDelta);
 
 #### [Chat Tools](https://platform.openai.com/docs/guides/function-calling)
 
-> Only available with the latest 0613 model series!
-
 ```csharp
 using var api = new OpenAIClient();
 var messages = new List<Message>
 {
-    new Message(Role.System, "You are a helpful weather assistant."),
+    new(Role.System, "You are a helpful weather assistant. Always prompt the user for their location."),
     new Message(Role.User, "What's the weather like today?"),
 };
 
@@ -939,31 +934,14 @@ foreach (var message in messages)
 }
 
 // Define the tools that the assistant is able to use:
+// 1. Get a list of all the static methods decorated with FunctionAttribute
+var tools = Tool.GetAllAvailableTools(includeDefaults: false, forceUpdate: true, clearCache: true);
+// 2. Define a custom list of tools:
 var tools = new List<Tool>
 {
-    new Function(
-        nameof(WeatherService.GetCurrentWeather),
-        "Get the current weather in a given location",
-            new JsonObject
-            {
-                ["type"] = "object",
-                ["properties"] = new JsonObject
-                {
-                    ["location"] = new JsonObject
-                    {
-                        ["type"] = "string",
-                        ["description"] = "The city and state, e.g. San Francisco, CA"
-                    },
-                    ["unit"] = new JsonObject
-                    {
-                        ["type"] = "string",
-                        ["enum"] = new JsonArray {"celsius", "fahrenheit"}
-                    }
-                },
-                ["required"] = new JsonArray { "location", "unit" }
-            })
+    Tool.GetOrCreateTool(objectInstance, "TheNameOfTheMethodToCall"),
+    Tool.FromFunc("a_custom_name_for_your_function", ()=> { /* Some logic to run */ })
 };
-
 var chatRequest = new ChatRequest(messages, tools: tools, toolChoice: "auto");
 var response = await api.ChatEndpoint.GetCompletionAsync(chatRequest);
 messages.Add(response.FirstChoice.Message);
@@ -978,24 +956,29 @@ response = await api.ChatEndpoint.GetCompletionAsync(chatRequest);
 
 messages.Add(response.FirstChoice.Message);
 
-if (!string.IsNullOrEmpty(response.ToString()))
+if (response.FirstChoice.FinishReason == "stop")
 {
     Console.WriteLine($"{response.FirstChoice.Message.Role}: {response.FirstChoice} | Finish Reason: {response.FirstChoice.FinishReason}");
 
-    var unitMessage = new Message(Role.User, "celsius");
+    var unitMessage = new Message(Role.User, "Fahrenheit");
     messages.Add(unitMessage);
     Console.WriteLine($"{unitMessage.Role}: {unitMessage.Content}");
     chatRequest = new ChatRequest(messages, tools: tools, toolChoice: "auto");
     response = await api.ChatEndpoint.GetCompletionAsync(chatRequest);
 }
 
-var usedTool = response.FirstChoice.Message.ToolCalls[0];
-Console.WriteLine($"{response.FirstChoice.Message.Role}: {usedTool.Function.Name} | Finish Reason: {response.FirstChoice.FinishReason}");
-Console.WriteLine($"{usedTool.Function.Arguments}");
-var functionArgs = JsonSerializer.Deserialize<WeatherArgs>(usedTool.Function.Arguments.ToString());
-var functionResult = WeatherService.GetCurrentWeather(functionArgs);
-messages.Add(new Message(usedTool, functionResult));
-Console.WriteLine($"{Role.Tool}: {functionResult}");
+// iterate over all tool calls and invoke them
+foreach (var toolCall in response.FirstChoice.Message.ToolCalls)
+{
+    Console.WriteLine($"{response.FirstChoice.Message.Role}: {toolCall.Function.Name} | Finish Reason: {response.FirstChoice.FinishReason}");
+    Console.WriteLine($"{toolCall.Function.Arguments}");
+    // Invokes function to get a generic json result to return for tool call.
+    var functionResult = await toolCall.InvokeFunctionAsync();
+    // If you know the return type and do additional processing you can use generic overload
+    var functionResult = await toolCall.InvokeFunctionAsync<string>();
+    messages.Add(new Message(toolCall, functionResult));
+    Console.WriteLine($"{Role.Tool}: {functionResult}");
+}
 // System: You are a helpful weather assistant.
 // User: What's the weather like today?
 // Assistant: Sure, may I know your current location? | Finish Reason: stop
@@ -1005,7 +988,7 @@ Console.WriteLine($"{Role.Tool}: {functionResult}");
 //   "location": "Glasgow, Scotland",
 //   "unit": "celsius"
 // }
-// Tool: The current weather in Glasgow, Scotland is 20 celsius
+// Tool: The current weather in Glasgow, Scotland is 39°C.
 ```
 
 #### [Chat Vision](https://platform.openai.com/docs/guides/vision)
@@ -1045,7 +1028,7 @@ var messages = new List<Message>
     new Message(Role.System, "You are a helpful assistant designed to output JSON."),
     new Message(Role.User, "Who won the world series in 2020?"),
 };
-var chatRequest = new ChatRequest(messages, "gpt-4-1106-preview", responseFormat: ChatResponseFormat.Json);
+var chatRequest = new ChatRequest(messages, "gpt-4-turbo-preview", responseFormat: ChatResponseFormat.Json);
 var response = await api.ChatEndpoint.GetCompletionAsync(chatRequest);
 
 foreach (var choice in response.Choices)
@@ -1085,9 +1068,22 @@ Transcribes audio into the input language.
 
 ```csharp
 using var api = new OpenAIClient();
-var request = new AudioTranscriptionRequest(Path.GetFullPath(audioAssetPath), language: "en");
-var response = await api.AudioEndpoint.CreateTranscriptionAsync(request);
+using var request = new AudioTranscriptionRequest(Path.GetFullPath(audioAssetPath), language: "en");
+var response = await api.AudioEndpoint.CreateTranscriptionTextAsync(request);
 Console.WriteLine(response);
+```
+
+You can also get detailed information using `verbose_json` to get timestamp granularities:
+
+```csharp
+using var api = new OpenAIClient();
+using var request = new AudioTranscriptionRequest(transcriptionAudio, responseFormat: AudioResponseFormat.Verbose_Json, timestampGranularity: TimestampGranularity.Word, temperature: 0.1f, language: "en");
+var response = await api.AudioEndpoint.CreateTranscriptionTextAsync(request);
+
+foreach (var word in response.Words)
+{
+    Console.WriteLine($"[{word.Start}-{word.End}] \"{word.Word}\"");
+}
 ```
 
 #### [Create Translation](https://platform.openai.com/docs/api-reference/audio/createTranslation)
@@ -1096,8 +1092,8 @@ Translates audio into into English.
 
 ```csharp
 using var api = new OpenAIClient();
-var request = new AudioTranslationRequest(Path.GetFullPath(audioAssetPath));
-var response = await api.AudioEndpoint.CreateTranslationAsync(request);
+using var request = new AudioTranslationRequest(Path.GetFullPath(audioAssetPath));
+var response = await api.AudioEndpoint.CreateTranslationTextAsync(request);
 Console.WriteLine(response);
 ```
 
@@ -1203,7 +1199,7 @@ Returns information about a specific file.
 
 ```csharp
 using var api = new OpenAIClient();
-var file = await GetFileInfoAsync(fileId);
+var file = await  api.FilesEndpoint.GetFileInfoAsync(fileId);
 Console.WriteLine($"{file.Id} -> {file.Object}: {file.FileName} | {file.Size} bytes");
 ```
 
@@ -1335,72 +1331,3 @@ Console.WriteLine(response.Results?[0]?.Scores?.ToString());
 ```
 
 ---
-
-### [Completions](https://platform.openai.com/docs/api-reference/completions)
-
-> :warning: Deprecated, and soon to be removed.
-
-Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.
-
-The Completions API is accessed via `OpenAIClient.CompletionsEndpoint`
-
-```csharp
-using var api = new OpenAIClient();
-var response = await api.CompletionsEndpoint.CreateCompletionAsync("One Two Three One Two", temperature: 0.1, model: Model.Davinci);
-Console.WriteLine(response);
-```
-
-> To get the `CompletionResponse` (which is mostly metadata), use its implicit string operator to get the text if all you want is the completion choice.
-
-#### Completion Streaming
-
-> :warning: Deprecated, and soon to be removed.
-
-Streaming allows you to get results are they are generated, which can help your application feel more responsive, especially on slow models like Davinci.
-
-```csharp
-using var api = new OpenAIClient();
-
-await api.CompletionsEndpoint.StreamCompletionAsync(response =>
-{
-    foreach (var choice in response.Completions)
-    {
-        Console.WriteLine(choice);
-    }
-}, "My name is Roger and I am a principal software engineer at Salesforce.  This is my resume:", maxTokens: 200, temperature: 0.5, presencePenalty: 0.1, frequencyPenalty: 0.1, model: Model.Davinci);
-```
-
-Or if using [`IAsyncEnumerable{T}`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.iasyncenumerable-1?view=net-5.0) ([C# 8.0+](https://docs.microsoft.com/en-us/archive/msdn-magazine/2019/november/csharp-iterating-with-async-enumerables-in-csharp-8))
-
-```csharp
-using var api = new OpenAIClient();
-await foreach (var partialResponse in api.CompletionsEndpoint.StreamCompletionEnumerableAsync("My name is Roger and I am a principal software engineer at Salesforce.  This is my resume:", maxTokens: 200, temperature: 0.5, presencePenalty: 0.1, frequencyPenalty: 0.1, model: Model.Davinci))
-{
-  Console.WriteLine(partialResponse);
-}
-```
-
-### [Edits](https://platform.openai.com/docs/api-reference/edits)
-
-> :warning: Deprecated, and soon to be removed.
-
-Given a prompt and an instruction, the model will return an edited version of the prompt.
-
-The Edits API is accessed via `OpenAIClient.EditsEndpoint`
-
-#### [Create Edit](https://platform.openai.com/docs/api-reference/edits/create)
-
-Creates a new edit for the provided input, instruction, and parameters using the provided input and instruction.
-
-```csharp
-using var api = new OpenAIClient();
-var request = new EditRequest("What day of the wek is it?", "Fix the spelling mistakes");
-var response = await api.EditsEndpoint.CreateEditAsync(request);
-Console.WriteLine(response);
-```
-
-## License
-
-![CC-0 Public Domain](https://licensebuttons.net/p/zero/1.0/88x31.png)
-
-This library is licensed CC-0, in the public domain.  You can use it for whatever you want, publicly or privately, without worrying about permission or licensing or whatever.  It's just a wrapper around the OpenAI API, so you still need to get access to OpenAI from them directly.  I am not affiliated with OpenAI and this library is not endorsed by them, I just have beta access and wanted to make a C# library to access it more easily.  Hopefully others find this useful as well.  Feel free to open a PR if there's anything you want to contribute.

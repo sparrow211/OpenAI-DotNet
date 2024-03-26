@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -259,13 +261,16 @@ namespace OpenAI.Threads
         /// <returns><see cref="RunResponse"/>.</returns>
         public static async Task<RunResponse> WaitForStatusChangeAsync(this RunResponse run, int? pollingInterval = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            using var cts = timeout is null or < 0 ? new CancellationTokenSource(TimeSpan.FromSeconds(timeout ?? 30)) : new CancellationTokenSource();
+            using CancellationTokenSource cts = timeout.HasValue && timeout < 0
+                ? new CancellationTokenSource()
+                : new CancellationTokenSource(TimeSpan.FromSeconds(timeout ?? 30));
             using var chainedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
             RunResponse result;
             do
             {
-                result = await run.UpdateAsync(cancellationToken: chainedCts.Token).ConfigureAwait(false);
-                await Task.Delay(pollingInterval ?? 500, chainedCts.Token).ConfigureAwait(false);
+                await Task.Delay(pollingInterval ?? 500, chainedCts.Token);
+                cancellationToken.ThrowIfCancellationRequested();
+                result = await run.UpdateAsync(cancellationToken: chainedCts.Token);
             } while (result.Status is RunStatus.Queued or RunStatus.InProgress or RunStatus.Cancelling);
             return result;
         }
@@ -280,7 +285,19 @@ namespace OpenAI.Threads
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="RunResponse"/>.</returns>
         public static async Task<RunResponse> SubmitToolOutputsAsync(this RunResponse run, SubmitToolOutputsRequest request, CancellationToken cancellationToken = default)
-            => await run.Client.ThreadsEndpoint.SubmitToolOutputsAsync(run.ThreadId, run.Id, request, cancellationToken);
+            => await run.Client.ThreadsEndpoint.SubmitToolOutputsAsync(run.ThreadId, run.Id, request, cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// When a run has the status: "requires_action" and required_action.type is submit_tool_outputs,
+        /// this endpoint can be used to submit the outputs from the tool calls once they're all completed.
+        /// All outputs must be submitted in a single request.
+        /// </summary>
+        /// <param name="run"><see cref="RunResponse"/> to submit outputs for.</param>
+        /// <param name="outputs"><see cref="ToolOutput"/>s</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public static async Task<RunResponse> SubmitToolOutputsAsync(this RunResponse run, IEnumerable<ToolOutput> outputs, CancellationToken cancellationToken = default)
+            => await run.SubmitToolOutputsAsync(new SubmitToolOutputsRequest(outputs), cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Returns a list of run steps belonging to a run.
@@ -290,7 +307,7 @@ namespace OpenAI.Threads
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="ListResponse{RunStep}"/>.</returns>
         public static async Task<ListResponse<RunStepResponse>> ListRunStepsAsync(this RunResponse run, ListQuery query = null, CancellationToken cancellationToken = default)
-            => await run.Client.ThreadsEndpoint.ListRunStepsAsync(run.ThreadId, run.Id, query, cancellationToken);
+            => await run.Client.ThreadsEndpoint.ListRunStepsAsync(run.ThreadId, run.Id, query, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Retrieves a run step.
@@ -328,7 +345,7 @@ namespace OpenAI.Threads
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="ListResponse{ThreadMessage}"/>.</returns>
         public static async Task<ListResponse<MessageResponse>> ListMessagesAsync(this RunResponse run, ListQuery query = null, CancellationToken cancellationToken = default)
-            => await run.Client.ThreadsEndpoint.ListMessagesAsync(run.ThreadId, query, cancellationToken);
+            => await run.Client.ThreadsEndpoint.ListMessagesAsync(run.ThreadId, query, cancellationToken).ConfigureAwait(false);
 
         #endregion Runs
     }

@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -22,7 +24,7 @@ namespace OpenAI.Threads
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public IReadOnlyList<Annotation> Annotations { get; private set; }
 
-        public static implicit operator ContentText(string value) => new ContentText(value);
+        public static implicit operator ContentText(string value) => new(value);
 
         public static implicit operator string(ContentText text) => text?.ToString();
 

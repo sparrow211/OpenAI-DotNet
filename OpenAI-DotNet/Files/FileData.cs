@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.Text.Json.Serialization;
 
 namespace OpenAI.Files
@@ -61,7 +63,7 @@ namespace OpenAI.Files
 
         public static implicit operator string(FileData fileData) => fileData?.ToString();
 
-        public static implicit operator FileResponse(FileData fileData) => new FileResponse(fileData);
+        public static implicit operator FileResponse(FileData fileData) => new(fileData);
 
         public override string ToString() => Id;
     }

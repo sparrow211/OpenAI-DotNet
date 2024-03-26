@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Runtime.Serialization;
 
 namespace OpenAI.Audio
@@ -11,6 +13,10 @@ namespace OpenAI.Audio
         [EnumMember(Value = "aac")]
         AAC,
         [EnumMember(Value = "flac")]
-        Flac
+        Flac,
+        [EnumMember(Value = "wav")]
+        WAV,
+        [EnumMember(Value = "pcm")]
+        PCM
     }
 }

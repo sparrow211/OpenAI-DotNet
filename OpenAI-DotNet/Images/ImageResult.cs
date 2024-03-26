@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System.Text.Json.Serialization;
 
 namespace OpenAI.Images
 {
@@ -22,6 +24,7 @@ namespace OpenAI.Images
             => !string.IsNullOrWhiteSpace(Url)
                 ? Url
                 : !string.IsNullOrWhiteSpace(B64_Json)
-                    ? B64_Json : null;
+                    ? B64_Json
+                    : string.Empty;
     }
 }
