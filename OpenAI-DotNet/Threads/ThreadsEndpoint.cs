@@ -1,7 +1,9 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using OpenAI.Extensions;
+using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,9 +28,9 @@ namespace OpenAI.Threads
         /// <returns><see cref="ThreadResponse"/>.</returns>
         public async Task<ThreadResponse> CreateThreadAsync(CreateThreadRequest request = null, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = request != null ? JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent() : null;
-            using var response = await client.Client.PostAsync(GetUrl(), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = request != null ? JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent() : null;
+            using var response = await client.Client.PostAsync(GetUrl(), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<ThreadResponse>(responseAsString, client);
         }
 
@@ -60,9 +62,9 @@ namespace OpenAI.Threads
         /// <returns><see cref="ThreadResponse"/>.</returns>
         public async Task<ThreadResponse> ModifyThreadAsync(string threadId, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<ThreadResponse>(responseAsString, client);
         }
 
@@ -76,7 +78,7 @@ namespace OpenAI.Threads
         {
             using var response = await client.Client.DeleteAsync(GetUrl($"/{threadId}"), cancellationToken).ConfigureAwait(false);
             var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<DeletedResponse>(responseAsString, OpenAIClient.JsonSerializationOptions)?.Deleted ?? false;
+            return response.Deserialize<DeletedResponse>(responseAsString, client)?.Deleted ?? false;
         }
 
         #region Messages
@@ -85,14 +87,14 @@ namespace OpenAI.Threads
         /// Create a message.
         /// </summary>
         /// <param name="threadId">The id of the thread to create a message for.</param>
-        /// <param name="request"></param>
+        /// <param name="message"><see cref="Message"/>.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="MessageResponse"/>.</returns>
-        public async Task<MessageResponse> CreateMessageAsync(string threadId, CreateMessageRequest request, CancellationToken cancellationToken = default)
+        public async Task<MessageResponse> CreateMessageAsync(string threadId, Message message, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/messages"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = JsonSerializer.Serialize(message, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/messages"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<MessageResponse>(responseAsString, client);
         }
 
@@ -101,11 +103,20 @@ namespace OpenAI.Threads
         /// </summary>
         /// <param name="threadId">The id of the thread the messages belong to.</param>
         /// <param name="query"><see cref="ListQuery"/>.</param>
+        /// <param name="runId">Optional, filter messages by the run ID that generated them.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="ListResponse{ThreadMessage}"/>.</returns>
-        public async Task<ListResponse<MessageResponse>> ListMessagesAsync(string threadId, ListQuery query = null, CancellationToken cancellationToken = default)
+        public async Task<ListResponse<MessageResponse>> ListMessagesAsync(string threadId, ListQuery query = null, string runId = null, CancellationToken cancellationToken = default)
         {
-            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages", query), cancellationToken).ConfigureAwait(false);
+            Dictionary<string, string> queryParams = query;
+
+            if (!string.IsNullOrWhiteSpace(runId))
+            {
+                queryParams ??= new();
+                queryParams.Add("run_id", runId);
+            }
+
+            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages", queryParams), cancellationToken).ConfigureAwait(false);
             var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
             return response.Deserialize<ListResponse<MessageResponse>>(responseAsString, client);
         }
@@ -156,47 +167,13 @@ namespace OpenAI.Threads
         /// <returns><see cref="MessageResponse"/>.</returns>
         public async Task<MessageResponse> ModifyMessageAsync(string threadId, string messageId, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/messages/{messageId}"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/messages/{messageId}"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<MessageResponse>(responseAsString, client);
         }
 
         #endregion Messages
-
-        #region Files
-
-        /// <summary>
-        /// Returns a list of message files.
-        /// </summary>
-        /// <param name="threadId">The id of the thread that the message and files belong to.</param>
-        /// <param name="messageId">The id of the message that the files belongs to.</param>
-        /// <param name="query"><see cref="ListQuery"/>.</param>
-        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
-        /// <returns><see cref="ListResponse{ThreadMessageFile}"/>.</returns>
-        public async Task<ListResponse<MessageFileResponse>> ListFilesAsync(string threadId, string messageId, ListQuery query = null, CancellationToken cancellationToken = default)
-        {
-            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages/{messageId}/files", query), cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return response.Deserialize<ListResponse<MessageFileResponse>>(responseAsString, client);
-        }
-
-        /// <summary>
-        /// Retrieve message file.
-        /// </summary>
-        /// <param name="threadId">The id of the thread to which the message and file belong.</param>
-        /// <param name="messageId">The id of the message the file belongs to.</param>
-        /// <param name="fileId">The id of the file being retrieved.</param>
-        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
-        /// <returns><see cref="MessageFileResponse"/>.</returns>
-        public async Task<MessageFileResponse> RetrieveFileAsync(string threadId, string messageId, string fileId, CancellationToken cancellationToken = default)
-        {
-            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages/{messageId}/files/{fileId}"), cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return response.Deserialize<MessageFileResponse>(responseAsString, client);
-        }
-
-        #endregion Files
 
         #region Runs
 
@@ -214,44 +191,184 @@ namespace OpenAI.Threads
             return response.Deserialize<ListResponse<RunResponse>>(responseAsString, client);
         }
 
+        [Obsolete("use new overload with Func<IServerSentEvent, Task> instead.")]
+        public async Task<RunResponse> CreateRunAsync(string threadId, CreateRunRequest request, Action<IServerSentEvent> streamEventHandler, CancellationToken cancellationToken = default)
+            => await CreateRunAsync(threadId, request, streamEventHandler == null ? null : serverSentEvent =>
+            {
+                streamEventHandler.Invoke(serverSentEvent);
+                return Task.CompletedTask;
+            }, cancellationToken).ConfigureAwait(false);
+
         /// <summary>
         /// Create a run.
         /// </summary>
         /// <param name="threadId">The id of the thread to run.</param>
-        /// <param name="request"></param>
+        /// <param name="request"><see cref="CreateRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{IServerSentEvent, Task}"/> stream callback handler.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="RunResponse"/>.</returns>
-        public async Task<RunResponse> CreateRunAsync(string threadId, CreateRunRequest request = null, CancellationToken cancellationToken = default)
+        public async Task<RunResponse> CreateRunAsync(string threadId, CreateRunRequest request = null, Func<IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
+            => await CreateRunAsync(threadId, request, streamEventHandler == null ? null : async (_, serverSentEvent) =>
+            {
+                await streamEventHandler.Invoke(serverSentEvent);
+            }, cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// Create a run.
+        /// </summary>
+        /// <typeparam name="T"><see cref="JsonSchema"/> to use for structured outputs.</typeparam>
+        /// <param name="threadId">The id of the thread to run.</param>
+        /// <param name="request"><see cref="CreateRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{IServerSentEvent, Task}"/> stream callback handler.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public async Task<RunResponse> CreateRunAsync<T>(string threadId, CreateRunRequest request = null, Func<IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.AssistantId))
+            if (string.IsNullOrWhiteSpace(request?.AssistantId))
             {
                 var assistant = await client.AssistantsEndpoint.CreateAssistantAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                request = new CreateRunRequest(assistant, request);
+
+                if (request == null)
+                {
+                    request = new CreateRunRequest(assistant);
+                }
+                else
+                {
+                    request.AssistantId = assistant.Id;
+                }
             }
 
-            using var jsonContent = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            request.ResponseFormatObject = new ResponseFormatObject(typeof(T));
+            return await CreateRunAsync(threadId, request, streamEventHandler == null ? null : async (_, serverSentEvent) =>
+            {
+                await streamEventHandler.Invoke(serverSentEvent);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Create a run.
+        /// </summary>
+        /// <param name="threadId">The id of the thread to run.</param>
+        /// <param name="request"><see cref="CreateRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{String, IServerSentEvent, Task}"/> stream callback handler.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public async Task<RunResponse> CreateRunAsync(string threadId, CreateRunRequest request = null, Func<string, IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request?.AssistantId))
+            {
+                var assistant = await client.AssistantsEndpoint.CreateAssistantAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                if (request == null)
+                {
+                    request = new CreateRunRequest(assistant);
+                }
+                else
+                {
+                    request.AssistantId = assistant.Id;
+                }
+            }
+
+            request.Stream = streamEventHandler != null;
+            var endpoint = GetUrl($"/{threadId}/runs");
+            using var payload = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+
+            if (request.Stream)
+            {
+                return await StreamRunAsync(endpoint, payload, streamEventHandler, cancellationToken).ConfigureAwait(false);
+            }
+
+            using var response = await client.Client.PostAsync(endpoint, payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<RunResponse>(responseAsString, client);
+        }
+
+        [Obsolete("use new overload with Func<IServerSentEvent, Task> instead.")]
+        public async Task<RunResponse> CreateThreadAndRunAsync(CreateThreadAndRunRequest request, Action<IServerSentEvent> streamEventHandler, CancellationToken cancellationToken = default)
+            => await CreateThreadAndRunAsync(request, streamEventHandler == null ? null : serverSentEvent =>
+            {
+                streamEventHandler.Invoke(serverSentEvent);
+                return Task.CompletedTask;
+            }, cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// Create a thread and run it in one request.
+        /// </summary>
+        /// <param name="request"><see cref="CreateThreadAndRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{IServerSentEvent, Task}"/> stream callback handler.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public async Task<RunResponse> CreateThreadAndRunAsync(CreateThreadAndRunRequest request = null, Func<IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
+            => await CreateThreadAndRunAsync(request, streamEventHandler == null ? null : async (_, serverSentEvent) =>
+            {
+                await streamEventHandler.Invoke(serverSentEvent);
+            }, cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// Create a thread and run it in one request.
+        /// </summary>
+        /// <typeparam name="T"><see cref="JsonSchema"/> to use for structured outputs.</typeparam>
+        /// <param name="request"><see cref="CreateThreadAndRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{IServerSentEvent, Task}"/> stream callback handler.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public async Task<RunResponse> CreateThreadAndRunAsync<T>(CreateThreadAndRunRequest request = null, Func<IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request?.AssistantId))
+            {
+                var assistant = await client.AssistantsEndpoint.CreateAssistantAsync<T>(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                if (request == null)
+                {
+                    request = new CreateThreadAndRunRequest(assistant, jsonSchema: typeof(T));
+                }
+                else
+                {
+                    request.AssistantId = assistant.Id;
+                }
+            }
+
+            request.ResponseFormatObject = new ResponseFormatObject(typeof(T));
+            return await CreateThreadAndRunAsync(request, streamEventHandler == null ? null : async (_, serverSentEvent) =>
+            {
+                await streamEventHandler.Invoke(serverSentEvent).ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Create a thread and run it in one request.
         /// </summary>
         /// <param name="request"><see cref="CreateThreadAndRunRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{String, IServerSentEvent, Task}"/> stream callback handler.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="RunResponse"/>.</returns>
-        public async Task<RunResponse> CreateThreadAndRunAsync(CreateThreadAndRunRequest request = null, CancellationToken cancellationToken = default)
+        public async Task<RunResponse> CreateThreadAndRunAsync(CreateThreadAndRunRequest request = null, Func<string, IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.AssistantId))
+            if (string.IsNullOrWhiteSpace(request?.AssistantId))
             {
                 var assistant = await client.AssistantsEndpoint.CreateAssistantAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                request = new CreateThreadAndRunRequest(assistant, request);
+
+                if (request == null)
+                {
+                    request = new CreateThreadAndRunRequest(assistant);
+                }
+                else
+                {
+                    request.AssistantId = assistant.Id;
+                }
             }
 
-            using var jsonContent = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl("/runs"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            request.Stream = streamEventHandler != null;
+            var endpoint = GetUrl("/runs");
+            using var payload = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+
+            if (request.Stream)
+            {
+                return await StreamRunAsync(endpoint, payload, streamEventHandler, cancellationToken).ConfigureAwait(false);
+            }
+
+            using var response = await client.Client.PostAsync(endpoint, payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<RunResponse>(responseAsString, client);
         }
 
@@ -284,11 +401,19 @@ namespace OpenAI.Threads
         /// <returns><see cref="RunResponse"/>.</returns>
         public async Task<RunResponse> ModifyRunAsync(string threadId, string runId, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs/{runId}"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = JsonSerializer.Serialize(new { metadata }, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs/{runId}"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<RunResponse>(responseAsString, client);
         }
+
+        [Obsolete("use new overload with Func<IServerSentEvent, Task> instead.")]
+        public async Task<RunResponse> SubmitToolOutputsAsync(string threadId, string runId, SubmitToolOutputsRequest request, Action<IServerSentEvent> streamEventHandler, CancellationToken cancellationToken = default)
+            => await SubmitToolOutputsAsync(threadId, runId, request, streamEventHandler == null ? null : serverSentEvent =>
+            {
+                streamEventHandler.Invoke(serverSentEvent);
+                return Task.CompletedTask;
+            }, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// When a run has the status: "requires_action" and required_action.type is submit_tool_outputs,
@@ -298,13 +423,39 @@ namespace OpenAI.Threads
         /// <param name="threadId">The id of the thread to which this run belongs.</param>
         /// <param name="runId">The id of the run that requires the tool output submission.</param>
         /// <param name="request"><see cref="SubmitToolOutputsRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{IServerSentEvent, Task}"/> stream callback handler.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="RunResponse"/>.</returns>
-        public async Task<RunResponse> SubmitToolOutputsAsync(string threadId, string runId, SubmitToolOutputsRequest request, CancellationToken cancellationToken = default)
+        public async Task<RunResponse> SubmitToolOutputsAsync(string threadId, string runId, SubmitToolOutputsRequest request, Func<IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
+            => await SubmitToolOutputsAsync(threadId, runId, request, streamEventHandler == null ? null : async (_, serverSentEvent) =>
+            {
+                await streamEventHandler.Invoke(serverSentEvent);
+            }, cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// When a run has the status: "requires_action" and required_action.type is submit_tool_outputs,
+        /// this endpoint can be used to submit the outputs from the tool calls once they're all completed.
+        /// All outputs must be submitted in a single request.
+        /// </summary>
+        /// <param name="threadId">The id of the thread to which this run belongs.</param>
+        /// <param name="runId">The id of the run that requires the tool output submission.</param>
+        /// <param name="request"><see cref="SubmitToolOutputsRequest"/>.</param>
+        /// <param name="streamEventHandler">Optional, <see cref="Func{String, IServerSentEvent, Task}"/> stream callback handler.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="RunResponse"/>.</returns>
+        public async Task<RunResponse> SubmitToolOutputsAsync(string threadId, string runId, SubmitToolOutputsRequest request, Func<string, IServerSentEvent, Task> streamEventHandler = null, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs/{runId}/submit_tool_outputs"), jsonContent, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            request.Stream = streamEventHandler != null;
+            using var payload = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            var endpoint = GetUrl($"/{threadId}/runs/{runId}/submit_tool_outputs");
+
+            if (request.Stream)
+            {
+                return await StreamRunAsync(endpoint, payload, streamEventHandler, cancellationToken).ConfigureAwait(false);
+            }
+
+            using var response = await client.Client.PostAsync(endpoint, payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
             return response.Deserialize<RunResponse>(responseAsString, client);
         }
 
@@ -345,13 +496,170 @@ namespace OpenAI.Threads
         /// <param name="runId">The id of the run to cancel.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
         /// <returns><see cref="RunResponse"/>.</returns>
-        public async Task<RunResponse> CancelRunAsync(string threadId, string runId, CancellationToken cancellationToken = default)
+        public async Task<bool> CancelRunAsync(string threadId, string runId, CancellationToken cancellationToken = default)
         {
-            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs/{runId}/cancel"), content: null, cancellationToken).ConfigureAwait(false);
+            using var response = await client.Client.PostAsync(GetUrl($"/{threadId}/runs/{runId}/cancel"), null!, cancellationToken).ConfigureAwait(false);
             var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return response.Deserialize<RunResponse>(responseAsString, client);
+            var run = response.Deserialize<RunResponse>(responseAsString, client);
+
+            if (run.Status < RunStatus.Cancelling)
+            {
+                try
+                {
+                    run = await run.WaitForStatusChangeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+            }
+
+            return run.Status >= RunStatus.Cancelling;
         }
 
         #endregion Runs
+
+        #region Files (Obsolete)
+
+        /// <summary>
+        /// Returns a list of message files.
+        /// </summary>
+        /// <param name="threadId">The id of the thread that the message and files belong to.</param>
+        /// <param name="messageId">The id of the message that the files belongs to.</param>
+        /// <param name="query"><see cref="ListQuery"/>.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="ListResponse{ThreadMessageFile}"/>.</returns>
+        [Obsolete("Files removed from Assistants. Files now belong to ToolResources.")]
+        public async Task<ListResponse<MessageFileResponse>> ListFilesAsync(string threadId, string messageId, ListQuery query = null, CancellationToken cancellationToken = default)
+        {
+            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages/{messageId}/files", query), cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Deserialize<ListResponse<MessageFileResponse>>(responseAsString, client);
+        }
+
+        /// <summary>
+        /// Retrieve message file.
+        /// </summary>
+        /// <param name="threadId">The id of the thread to which the message and file belong.</param>
+        /// <param name="messageId">The id of the message the file belongs to.</param>
+        /// <param name="fileId">The id of the file being retrieved.</param>
+        /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
+        /// <returns><see cref="MessageFileResponse"/>.</returns>
+        [Obsolete("Files removed from Assistants. Files now belong to ToolResources.")]
+        public async Task<MessageFileResponse> RetrieveFileAsync(string threadId, string messageId, string fileId, CancellationToken cancellationToken = default)
+        {
+            using var response = await client.Client.GetAsync(GetUrl($"/{threadId}/messages/{messageId}/files/{fileId}"), cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Deserialize<MessageFileResponse>(responseAsString, client);
+        }
+
+        #endregion Files (Obsolete)
+
+        private async Task<RunResponse> StreamRunAsync(string endpoint, StringContent payload, Func<string, IServerSentEvent, Task> streamEventHandler, CancellationToken cancellationToken = default)
+        {
+            RunResponse run = null;
+            RunStepResponse runStep = null;
+            MessageResponse message = null;
+
+            using var response = await this.StreamEventsAsync(endpoint, payload, async (sseResponse, ssEvent) =>
+            {
+                IServerSentEvent serverSentEvent = default;
+                var @event = ssEvent.Value.GetValue<string>();
+
+                try
+                {
+                    switch (@event)
+                    {
+                        case "thread.created":
+                            serverSentEvent = sseResponse.Deserialize<ThreadResponse>(ssEvent, client);
+                            break;
+                        case "thread.run.created":
+                        case "thread.run.queued":
+                        case "thread.run.in_progress":
+                        case "thread.run.requires_action":
+                        case "thread.run.completed":
+                        case "thread.run.incomplete":
+                        case "thread.run.failed":
+                        case "thread.run.cancelling":
+                        case "thread.run.cancelled":
+                        case "thread.run.expired":
+                            var partialRun = sseResponse.Deserialize<RunResponse>(ssEvent, client);
+
+                            if (run == null)
+                            {
+                                run = partialRun;
+                            }
+                            else
+                            {
+                                run.AppendFrom(partialRun);
+                            }
+
+                            serverSentEvent = run;
+                            break;
+                        case "thread.run.step.created":
+                        case "thread.run.step.in_progress":
+                        case "thread.run.step.delta":
+                        case "thread.run.step.completed":
+                        case "thread.run.step.failed":
+                        case "thread.run.step.cancelled":
+                        case "thread.run.step.expired":
+                            var partialRunStep = sseResponse.Deserialize<RunStepResponse>(ssEvent, client);
+
+                            if (runStep == null ||
+                                runStep.Id != partialRunStep.Id)
+                            {
+                                runStep = partialRunStep;
+                            }
+                            else
+                            {
+                                runStep.AppendFrom(partialRunStep);
+                            }
+
+                            serverSentEvent = runStep;
+                            break;
+                        case "thread.message.created":
+                        case "thread.message.in_progress":
+                        case "thread.message.delta":
+                        case "thread.message.completed":
+                        case "thread.message.incomplete":
+                            var partialMessage = sseResponse.Deserialize<MessageResponse>(ssEvent, client);
+
+                            if (message == null ||
+                                message.Id != partialMessage.Id)
+                            {
+                                message = partialMessage;
+                            }
+                            else
+                            {
+                                message.AppendFrom(partialMessage);
+                            }
+
+                            serverSentEvent = message;
+                            break;
+                        case "error":
+                            serverSentEvent = sseResponse.Deserialize<Error>(ssEvent, client);
+                            break;
+                        default:
+                            // if not properly handled raise it up to caller to deal with it themselves.
+                            serverSentEvent = ssEvent;
+                            break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    @event = "error";
+                    serverSentEvent = new Error(e);
+                }
+                finally
+                {
+                    await streamEventHandler.Invoke(@event, serverSentEvent).ConfigureAwait(false);
+                }
+            }, cancellationToken);
+
+            if (run == null) { return null; }
+            run = await run.WaitForStatusChangeAsync(timeout: -1, cancellationToken: cancellationToken).ConfigureAwait(false);
+            run.SetResponseData(response.Headers, client);
+            return run;
+        }
     }
 }

@@ -10,10 +10,11 @@ namespace OpenAI
     /// </summary>
     public sealed class OpenAIClientSettings
     {
+        internal const string Https = "https://";
         internal const string OpenAIDomain = "api.openai.com";
         internal const string DefaultOpenAIApiVersion = "v1";
         internal const string AzureOpenAIDomain = "openai.azure.com";
-        internal const string DefaultAzureApiVersion = "2022-12-01";
+        internal const string DefaultAzureApiVersion = "2023-05-01";
 
         /// <summary>
         /// Creates a new instance of <see cref="OpenAIClientSettings"/> for use with OpenAI.
@@ -24,7 +25,7 @@ namespace OpenAI
             ApiVersion = "v1";
             DeploymentId = string.Empty;
             BaseRequest = $"/{ApiVersion}/";
-            BaseRequestUrlFormat = $"https://{ResourceName}{BaseRequest}{{0}}";
+            BaseRequestUrlFormat = $"{Https}{ResourceName}{BaseRequest}{{0}}";
             UseOAuthAuthentication = true;
         }
 
@@ -51,11 +52,11 @@ namespace OpenAI
                 apiVersion = DefaultOpenAIApiVersion;
             }
 
-            ResourceName = domain;
+            ResourceName = domain.Contains("http") ? domain : $"{Https}{domain}";
             ApiVersion = apiVersion;
             DeploymentId = string.Empty;
             BaseRequest = $"/{ApiVersion}/";
-            BaseRequestUrlFormat = $"https://{ResourceName}{BaseRequest}{{0}}";
+            BaseRequestUrlFormat = $"{ResourceName}{BaseRequest}{{0}}";
             UseOAuthAuthentication = true;
         }
 
@@ -96,8 +97,8 @@ namespace OpenAI
             ResourceName = resourceName;
             DeploymentId = deploymentId;
             ApiVersion = apiVersion;
-            BaseRequest = $"/openai/deployments/{DeploymentId}/";
-            BaseRequestUrlFormat = $"https://{ResourceName}.{AzureOpenAIDomain}{BaseRequest}{{0}}";
+            BaseRequest = "/openai/";
+            BaseRequestUrlFormat = $"{Https}{ResourceName}.{AzureOpenAIDomain}{BaseRequest}{{0}}";
             defaultQueryParameters.Add("api-version", ApiVersion);
             UseOAuthAuthentication = useActiveDirectoryAuthentication;
         }
@@ -108,13 +109,16 @@ namespace OpenAI
 
         public string DeploymentId { get; }
 
-        internal string BaseRequest { get; }
+        public string BaseRequest { get; }
 
         internal string BaseRequestUrlFormat { get; }
 
         internal bool UseOAuthAuthentication { get; }
 
-        internal bool IsAzureDeployment => BaseRequestUrlFormat.Contains(AzureOpenAIDomain);
+        [Obsolete("Use IsAzureOpenAI")]
+        public bool IsAzureDeployment => IsAzureOpenAI;
+
+        public bool IsAzureOpenAI => BaseRequestUrlFormat.Contains(AzureOpenAIDomain);
 
         private readonly Dictionary<string, string> defaultQueryParameters = new();
 

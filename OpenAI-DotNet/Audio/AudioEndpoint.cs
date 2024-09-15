@@ -2,6 +2,7 @@
 
 using OpenAI.Extensions;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -22,18 +23,20 @@ namespace OpenAI.Audio
         /// <inheritdoc />
         protected override string Root => "audio";
 
+        protected override bool? IsAzureDeployment => true;
+
         /// <summary>
         /// Generates audio from the input text.
         /// </summary>
         /// <param name="request"><see cref="SpeechRequest"/>.</param>
         /// <param name="chunkCallback">Optional, partial chunk <see cref="ReadOnlyMemory{T}"/> callback to stream audio as it arrives.</param>
         /// <param name="cancellationToken">Optional, <see cref="CancellationToken"/>.</param>
-        /// <returns><see cref="ReadOnlyMemory{T}"/></returns>
+        /// <returns><see cref="ReadOnlyMemory{T}"/>.</returns>
         public async Task<ReadOnlyMemory<byte>> CreateSpeechAsync(SpeechRequest request, Func<ReadOnlyMemory<byte>, Task> chunkCallback = null, CancellationToken cancellationToken = default)
         {
-            using var jsonContent = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
-            using var response = await client.Client.PostAsync(GetUrl("/speech"), jsonContent, cancellationToken).ConfigureAwait(false);
-            await response.CheckResponseAsync(false, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            using var payload = JsonSerializer.Serialize(request, OpenAIClient.JsonSerializationOptions).ToJsonStringContent();
+            using var response = await client.Client.PostAsync(GetUrl("/speech"), payload, cancellationToken).ConfigureAwait(false);
+            await response.CheckResponseAsync(false, payload, cancellationToken: cancellationToken).ConfigureAwait(false);
             await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using var memoryStream = new MemoryStream();
             int bytesRead;
@@ -59,13 +62,9 @@ namespace OpenAI.Audio
                 totalBytesRead += bytesRead;
             }
 
-            await response.CheckResponseAsync(EnableDebug, jsonContent, null, cancellationToken).ConfigureAwait(false);
+            await response.CheckResponseAsync(EnableDebug, payload, cancellationToken: cancellationToken).ConfigureAwait(false);
             return new ReadOnlyMemory<byte>(memoryStream.GetBuffer(), 0, totalBytesRead);
         }
-
-        [Obsolete("Use CreateTranscriptionTextAsync or CreateTranscriptionJsonAsync instead.")]
-        public async Task<string> CreateTranscriptionAsync(AudioTranscriptionRequest request, CancellationToken cancellationToken = default)
-            => await CreateTranscriptionTextAsync(request, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Transcribes audio into the input language.
@@ -75,9 +74,9 @@ namespace OpenAI.Audio
         /// <returns>The transcribed text.</returns>
         public async Task<string> CreateTranscriptionTextAsync(AudioTranscriptionRequest request, CancellationToken cancellationToken = default)
         {
-            var responseAsString = await Internal_CreateTranscriptionAsync(request, cancellationToken).ConfigureAwait(false);
+            var (response, responseAsString) = await Internal_CreateTranscriptionAsync(request, cancellationToken).ConfigureAwait(false);
             return request.ResponseFormat is AudioResponseFormat.Json or AudioResponseFormat.Verbose_Json
-                ? JsonSerializer.Deserialize<AudioResponse>(responseAsString)?.Text
+                ? response.Deserialize<AudioResponse>(responseAsString, client)?.Text
                 : responseAsString;
         }
 
@@ -95,53 +94,55 @@ namespace OpenAI.Audio
                 throw new ArgumentException("Response format must be Json or Verbose Json.", nameof(request.ResponseFormat));
             }
 
-            var responseAsString = await Internal_CreateTranscriptionAsync(request, cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<AudioResponse>(responseAsString);
+            var (response, responseAsString) = await Internal_CreateTranscriptionAsync(request, cancellationToken).ConfigureAwait(false);
+            return response.Deserialize<AudioResponse>(responseAsString, client);
         }
 
-        private async Task<string> Internal_CreateTranscriptionAsync(AudioTranscriptionRequest request, CancellationToken cancellationToken = default)
+        private async Task<(HttpResponseMessage, string)> Internal_CreateTranscriptionAsync(AudioTranscriptionRequest request, CancellationToken cancellationToken = default)
         {
-            using var content = new MultipartFormDataContent();
-            using var audioData = new MemoryStream();
-            await request.Audio.CopyToAsync(audioData, cancellationToken).ConfigureAwait(false);
-            content.Add(new ByteArrayContent(audioData.ToArray()), "file", request.AudioName);
-            content.Add(new StringContent(request.Model), "model");
+            using var payload = new MultipartFormDataContent();
 
-            if (!string.IsNullOrWhiteSpace(request.Language))
+            try
             {
-                content.Add(new StringContent(request.Language), "language");
+                using var audioData = new MemoryStream();
+                await request.Audio.CopyToAsync(audioData, cancellationToken).ConfigureAwait(false);
+                payload.Add(new ByteArrayContent(audioData.ToArray()), "file", request.AudioName);
+                payload.Add(new StringContent(request.Model), "model");
+
+                if (!string.IsNullOrWhiteSpace(request.Language))
+                {
+                    payload.Add(new StringContent(request.Language), "language");
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.Prompt))
+                {
+                    payload.Add(new StringContent(request.Prompt), "prompt");
+                }
+
+                payload.Add(new StringContent(request.ResponseFormat.ToString().ToLower()), "response_format");
+
+                if (request.Temperature.HasValue)
+                {
+                    payload.Add(new StringContent(request.Temperature.Value.ToString(CultureInfo.InvariantCulture)), "temperature");
+                }
+
+                switch (request.TimestampGranularities)
+                {
+                    case TimestampGranularity.Segment:
+                    case TimestampGranularity.Word:
+                        payload.Add(new StringContent(request.TimestampGranularities.ToString().ToLower()), "timestamp_granularities[]");
+                        break;
+                }
+            }
+            finally
+            {
+                request.Dispose();
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Prompt))
-            {
-                content.Add(new StringContent(request.Prompt), "prompt");
-            }
-
-            content.Add(new StringContent(request.ResponseFormat.ToString().ToLower()), "response_format");
-
-            if (request.Temperature.HasValue)
-            {
-                content.Add(new StringContent(request.Temperature.ToString()), "temperature");
-            }
-
-            switch (request.TimestampGranularities)
-            {
-                case TimestampGranularity.Segment:
-                case TimestampGranularity.Word:
-                    content.Add(new StringContent(request.TimestampGranularities.ToString().ToLower()), "timestamp_granularities[]");
-                    break;
-            }
-
-            request.Dispose();
-
-            using var response = await client.Client.PostAsync(GetUrl("/transcriptions"), content, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, content, null, cancellationToken).ConfigureAwait(false);
-            return responseAsString;
+            using var response = await client.Client.PostAsync(GetUrl("/transcriptions"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
+            return (response, responseAsString);
         }
-
-        [Obsolete("Use CreateTranslationTextAsync or CreateTranslationJsonAsync instead.")]
-        public async Task<string> CreateTranslationAsync(AudioTranslationRequest request, CancellationToken cancellationToken = default)
-            => await CreateTranslationTextAsync(request, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Translates audio into English.
@@ -151,9 +152,9 @@ namespace OpenAI.Audio
         /// <returns>The translated text.</returns>
         public async Task<string> CreateTranslationTextAsync(AudioTranslationRequest request, CancellationToken cancellationToken = default)
         {
-            var responseAsString = await Internal_CreateTranslationAsync(request, cancellationToken).ConfigureAwait(false);
+            var (response, responseAsString) = await Internal_CreateTranslationAsync(request, cancellationToken).ConfigureAwait(false);
             return request.ResponseFormat is AudioResponseFormat.Json or AudioResponseFormat.Verbose_Json
-                ? JsonSerializer.Deserialize<AudioResponse>(responseAsString)?.Text
+                ? response.Deserialize<AudioResponse>(responseAsString, client)?.Text
                 : responseAsString;
         }
 
@@ -171,35 +172,41 @@ namespace OpenAI.Audio
                 throw new ArgumentException("Response format must be Json or Verbose Json.", nameof(request.ResponseFormat));
             }
 
-            var responseAsString = await Internal_CreateTranslationAsync(request, cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<AudioResponse>(responseAsString);
+            var (response, responseAsString) = await Internal_CreateTranslationAsync(request, cancellationToken).ConfigureAwait(false);
+            return response.Deserialize<AudioResponse>(responseAsString, client);
         }
 
-        private async Task<string> Internal_CreateTranslationAsync(AudioTranslationRequest request, CancellationToken cancellationToken = default)
+        private async Task<(HttpResponseMessage, string)> Internal_CreateTranslationAsync(AudioTranslationRequest request, CancellationToken cancellationToken = default)
         {
-            using var content = new MultipartFormDataContent();
-            using var audioData = new MemoryStream();
-            await request.Audio.CopyToAsync(audioData, cancellationToken).ConfigureAwait(false);
-            content.Add(new ByteArrayContent(audioData.ToArray()), "file", request.AudioName);
-            content.Add(new StringContent(request.Model), "model");
+            using var payload = new MultipartFormDataContent();
 
-            if (!string.IsNullOrWhiteSpace(request.Prompt))
+            try
             {
-                content.Add(new StringContent(request.Prompt), "prompt");
+                using var audioData = new MemoryStream();
+                await request.Audio.CopyToAsync(audioData, cancellationToken).ConfigureAwait(false);
+                payload.Add(new ByteArrayContent(audioData.ToArray()), "file", request.AudioName);
+                payload.Add(new StringContent(request.Model), "model");
+
+                if (!string.IsNullOrWhiteSpace(request.Prompt))
+                {
+                    payload.Add(new StringContent(request.Prompt), "prompt");
+                }
+
+                payload.Add(new StringContent(request.ResponseFormat.ToString().ToLower()), "response_format");
+
+                if (request.Temperature.HasValue)
+                {
+                    payload.Add(new StringContent(request.Temperature.Value.ToString(CultureInfo.InvariantCulture)), "temperature");
+                }
+            }
+            finally
+            {
+                request.Dispose();
             }
 
-            content.Add(new StringContent(request.ResponseFormat.ToString().ToLower()), "response_format");
-
-            if (request.Temperature.HasValue)
-            {
-                content.Add(new StringContent(request.Temperature.ToString()), "temperature");
-            }
-
-            request.Dispose();
-
-            using var response = await client.Client.PostAsync(GetUrl("/translations"), content, cancellationToken).ConfigureAwait(false);
-            var responseAsString = await response.ReadAsStringAsync(EnableDebug, content, null, cancellationToken).ConfigureAwait(false);
-            return responseAsString;
+            using var response = await client.Client.PostAsync(GetUrl("/translations"), payload, cancellationToken).ConfigureAwait(false);
+            var responseAsString = await response.ReadAsStringAsync(EnableDebug, payload, cancellationToken).ConfigureAwait(false);
+            return (response, responseAsString);
         }
     }
 }
