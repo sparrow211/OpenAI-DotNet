@@ -48,7 +48,7 @@ namespace OpenAI
         /// This internal HttpClient is disposed of when OpenAIClient is disposed of.
         /// If you provide an external HttpClient instance to OpenAIClient, you are responsible for managing its disposal.
         /// </remarks>
-        public OpenAIClient(OpenAIAuthentication openAIAuthentication = null, OpenAIClientSettings clientSettings = null, HttpClient client = null)
+        public OpenAIClient(OpenAIAuthentication openAIAuthentication = null, OpenAIClientSettings clientSettings = null, HttpClient client = null, TimeSpan? clientTimeout = null)
         {
             OpenAIAuthentication = openAIAuthentication ?? OpenAIAuthentication.Default;
             OpenAIClientSettings = clientSettings ?? OpenAIClientSettings.Default;
@@ -58,7 +58,7 @@ namespace OpenAI
                 throw new AuthenticationException("You must provide API authentication.");
             }
 
-            Client = SetupClient(client);
+            Client = SetupClient(client, clientTimeout);
             ModelsEndpoint = new ModelsEndpoint(this);
             ChatEndpoint = new ChatEndpoint(this);
             ImagesEndPoint = new ImagesEndpoint(this);
@@ -198,7 +198,7 @@ namespace OpenAI
 
         #endregion Endpoints
 
-        private HttpClient SetupClient(HttpClient client = null)
+        private HttpClient SetupClient(HttpClient client = null, TimeSpan? clientTimeout = null)
         {
             if (client == null)
             {
@@ -236,7 +236,8 @@ namespace OpenAI
             {
                 client.DefaultRequestHeaders.Add("OpenAI-Organization", OpenAIAuthentication.OrganizationId);
             }
-
+            if (clientTimeout.HasValue)
+                client.Timeout = clientTimeout.Value;
             return client;
         }
     }
