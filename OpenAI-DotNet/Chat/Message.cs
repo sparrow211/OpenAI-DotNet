@@ -88,6 +88,14 @@ namespace OpenAI.Chat
         [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
         public dynamic Content { get; private set; }
 
+        /// <summary>
+        ///The content of the thought chain is at the same level as content.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("reasoning_content")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ReasoningContent { get; private set; }
+
         private List<Tool> toolCalls;
 
         /// <summary>
