@@ -89,7 +89,7 @@ namespace OpenAI.Chat
         public dynamic Content { get; private set; }
 
         /// <summary>
-        ///The content of the thought chain is at the same level as content.
+        ///The content of the thought chain is at the same level as content.1
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("reasoning_content")]
