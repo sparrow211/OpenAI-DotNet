@@ -9,23 +9,30 @@ namespace OpenAI.Chat
 {
     public sealed class ChatResponse : BaseResponse
     {
-        public ChatResponse() { }
+        [JsonIgnore]
+        private List<Choice> choices;
+
+        public ChatResponse()
+        { }
 
         internal ChatResponse(ChatResponse other) => CopyFrom(other);
 
         /// <summary>
-        /// A unique identifier for the chat completion.
+        /// A list of chat completion choices. Can be more than one if n is greater than 1.
         /// </summary>
         [JsonInclude]
-        [JsonPropertyName("id")]
-        public string Id { get; private set; }
-
-        [JsonInclude]
-        [JsonPropertyName("object")]
-        public string Object { get; private set; }
+        [JsonPropertyName("choices")]
+        public IReadOnlyList<Choice> Choices
+        {
+            get => choices;
+            private set => choices = value.ToList();
+        }
 
         [Obsolete("Use CreatedAtUnixTimeSeconds")]
         public int Created => CreatedAtUnixTimeSeconds;
+
+        [JsonIgnore]
+        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
 
         /// <summary>
         /// The Unix timestamp (in seconds) of when the chat completion was created.
@@ -35,11 +42,22 @@ namespace OpenAI.Chat
         public int CreatedAtUnixTimeSeconds { get; private set; }
 
         [JsonIgnore]
-        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
+        public Choice FirstChoice => Choices?.FirstOrDefault(choice => choice.Index == 0);
+
+        /// <summary>
+        /// A unique identifier for the chat completion.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("id")]
+        public string Id { get; private set; }
 
         [JsonInclude]
         [JsonPropertyName("model")]
         public string Model { get; private set; }
+
+        [JsonInclude]
+        [JsonPropertyName("object")]
+        public string Object { get; private set; }
 
         /// <summary>
         /// This fingerprint represents the backend configuration that the model runs with.
@@ -54,26 +72,21 @@ namespace OpenAI.Chat
         [JsonPropertyName("usage")]
         public Usage Usage { get; private set; }
 
-        [JsonIgnore]
-        private List<Choice> choices;
+        public static implicit operator string(ChatResponse response) => response?.ToString();
 
-        /// <summary>
-        /// A list of chat completion choices. Can be more than one if n is greater than 1.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("choices")]
-        public IReadOnlyList<Choice> Choices
+        public string GetUsage(bool log = true)
         {
-            get => choices;
-            private set => choices = value.ToList();
+            var message = $"{Id} | {Model} | {Usage}";
+
+            if (log)
+            {
+                Console.WriteLine(message);
+            }
+
+            return message;
         }
 
-        [JsonIgnore]
-        public Choice FirstChoice => Choices?.FirstOrDefault(choice => choice.Index == 0);
-
         public override string ToString() => FirstChoice?.ToString() ?? string.Empty;
-
-        public static implicit operator string(ChatResponse response) => response?.ToString();
 
         internal void CopyFrom(ChatResponse other)
         {
@@ -118,18 +131,6 @@ namespace OpenAI.Chat
                     choices[otherChoice.Index].CopyFrom(otherChoice);
                 }
             }
-        }
-
-        public string GetUsage(bool log = true)
-        {
-            var message = $"{Id} | {Model} | {Usage}";
-
-            if (log)
-            {
-                Console.WriteLine(message);
-            }
-
-            return message;
         }
     }
 }
