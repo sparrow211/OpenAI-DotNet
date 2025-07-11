@@ -16,10 +16,12 @@ namespace OpenAI.Threads
         Cancelling,
         [EnumMember(Value = "cancelled")]
         Cancelled,
-        [EnumMember(Value = "failed")]
-        Failed,
         [EnumMember(Value = "completed")]
         Completed,
+        [EnumMember(Value = "incomplete")]
+        Incomplete,
+        [EnumMember(Value = "failed")]
+        Failed,
         [EnumMember(Value = "expired")]
         Expired
     }

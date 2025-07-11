@@ -1,5 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using OpenAI.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,42 +8,11 @@ using System.Text.Json.Serialization;
 
 namespace OpenAI.Chat
 {
-    public sealed class ChatResponse : BaseResponse
+    public sealed class ChatResponse : BaseResponse, IServerSentEvent
     {
-        [JsonIgnore]
-        private List<Choice> choices;
+        public ChatResponse() { }
 
-        public ChatResponse()
-        { }
-
-        internal ChatResponse(ChatResponse other) => CopyFrom(other);
-
-        /// <summary>
-        /// A list of chat completion choices. Can be more than one if n is greater than 1.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("choices")]
-        public IReadOnlyList<Choice> Choices
-        {
-            get => choices;
-            private set => choices = value.ToList();
-        }
-
-        [Obsolete("Use CreatedAtUnixTimeSeconds")]
-        public int Created => CreatedAtUnixTimeSeconds;
-
-        [JsonIgnore]
-        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
-
-        /// <summary>
-        /// The Unix timestamp (in seconds) of when the chat completion was created.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("created")]
-        public int CreatedAtUnixTimeSeconds { get; private set; }
-
-        [JsonIgnore]
-        public Choice FirstChoice => Choices?.FirstOrDefault(choice => choice.Index == 0);
+        internal ChatResponse(ChatResponse other) => AppendFrom(other);
 
         /// <summary>
         /// A unique identifier for the chat completion.
@@ -52,12 +22,26 @@ namespace OpenAI.Chat
         public string Id { get; private set; }
 
         [JsonInclude]
+        [JsonPropertyName("object")]
+        public string Object { get; private set; }
+
+        /// <summary>
+        /// The Unix timestamp (in seconds) of when the chat completion was created.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("created")]
+        public int CreatedAtUnixTimeSeconds { get; private set; }
+
+        [JsonIgnore]
+        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
+
+        [JsonInclude]
         [JsonPropertyName("model")]
         public string Model { get; private set; }
 
         [JsonInclude]
-        [JsonPropertyName("object")]
-        public string Object { get; private set; }
+        [JsonPropertyName("service_tier")]
+        public string ServiceTier { get; private set; }
 
         /// <summary>
         /// This fingerprint represents the backend configuration that the model runs with.
@@ -72,40 +56,56 @@ namespace OpenAI.Chat
         [JsonPropertyName("usage")]
         public Usage Usage { get; private set; }
 
-        public static implicit operator string(ChatResponse response) => response?.ToString();
+        [JsonIgnore]
+        private List<Choice> choices;
 
-        public string GetUsage(bool log = true)
+        /// <summary>
+        /// A list of chat completion choices. Can be more than one if n is greater than 1.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("choices")]
+        public IReadOnlyList<Choice> Choices
         {
-            var message = $"{Id} | {Model} | {Usage}";
-
-            if (log)
-            {
-                Console.WriteLine(message);
-            }
-
-            return message;
+            get => choices;
+            private set => choices = value?.ToList();
         }
 
-        public override string ToString() => FirstChoice?.ToString() ?? string.Empty;
+        [JsonIgnore]
+        public Choice FirstChoice
+            => Choices?.FirstOrDefault(choice => choice.Index == 0);
 
-        internal void CopyFrom(ChatResponse other)
+        public override string ToString()
+            => FirstChoice?.ToString() ?? string.Empty;
+
+        public static implicit operator string(ChatResponse response) => response?.ToString();
+
+        internal void AppendFrom(ChatResponse other)
         {
-            if (!string.IsNullOrWhiteSpace(other?.Id))
+            if (other is null) { return; }
+
+            if (!string.IsNullOrWhiteSpace(Id) && !string.IsNullOrWhiteSpace(other.Id))
+            {
+                if (Id != other.Id)
+                {
+                    throw new InvalidOperationException($"Attempting to append a different object than the original! {Id} != {other.Id}");
+                }
+            }
+            else
             {
                 Id = other.Id;
             }
 
-            if (!string.IsNullOrWhiteSpace(other?.Object))
+            if (!string.IsNullOrWhiteSpace(other.Object))
             {
                 Object = other.Object;
             }
 
-            if (!string.IsNullOrWhiteSpace(other?.Model))
+            if (!string.IsNullOrWhiteSpace(other.Model))
             {
                 Model = other.Model;
             }
 
-            if (other?.Usage != null)
+            if (other.Usage != null)
             {
                 if (Usage == null)
                 {
@@ -113,24 +113,26 @@ namespace OpenAI.Chat
                 }
                 else
                 {
-                    Usage.CopyFrom(other.Usage);
+                    Usage.AppendFrom(other.Usage);
                 }
             }
 
-            if (other?.Choices is { Count: > 0 })
+            if (other.Choices is { Count: > 0 })
             {
                 choices ??= new List<Choice>();
-
-                foreach (var otherChoice in other.Choices)
-                {
-                    if (otherChoice.Index + 1 > choices.Count)
-                    {
-                        choices.Insert(otherChoice.Index, otherChoice);
-                    }
-
-                    choices[otherChoice.Index].CopyFrom(otherChoice);
-                }
+                choices.AppendFrom(other.Choices);
             }
+        }
+
+        [Obsolete("use PrintUsage")]
+        public void GetUsage()
+            => PrintUsage();
+
+        public void PrintUsage()
+        {
+            if (Usage == null) { return; }
+            var message = $"{Id} | {Model} | {Usage}";
+            Console.WriteLine(message);
         }
     }
 }

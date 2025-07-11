@@ -1,6 +1,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace OpenAI.Threads
@@ -12,7 +13,10 @@ namespace OpenAI.Threads
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("input")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Input { get; private set; }
+
+        private List<CodeInterpreterOutputs> outputs;
 
         /// <summary>
         /// The outputs from the Code Interpreter tool call.
@@ -21,6 +25,27 @@ namespace OpenAI.Threads
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("outputs")]
-        public IReadOnlyList<CodeInterpreterOutputs> Outputs { get; private set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public IReadOnlyList<CodeInterpreterOutputs> Outputs
+        {
+            get => outputs;
+            private set => outputs = value?.ToList();
+        }
+
+        internal void AppendFrom(CodeInterpreter other)
+        {
+            if (other == null) { return; }
+
+            if (!string.IsNullOrWhiteSpace(other.Input))
+            {
+                Input += other.Input;
+            }
+
+            if (other.Outputs != null)
+            {
+                outputs ??= new List<CodeInterpreterOutputs>();
+                outputs.AddRange(other.Outputs);
+            }
+        }
     }
 }

@@ -1,17 +1,16 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System.Text;
 using System;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace OpenAI
 {
-    public sealed class Error
+    public sealed class Error : BaseResponse, IServerSentEvent
     {
-        public Error()
-        { }
+        public Error() { }
 
-        internal Error(Exception e)
+        public Error(Exception e)
         {
             Type = e.GetType().Name;
             Message = e.Message;
@@ -26,17 +25,6 @@ namespace OpenAI
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Code { get; private set; }
 
-        [JsonIgnore]
-        public Exception Exception { get; }
-
-        /// <summary>
-        /// The line number of the input file where the error occurred, if applicable.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("line")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public int? Line { get; private set; }
-
         /// <summary>
         /// A human-readable message providing more details about the error.
         /// </summary>
@@ -44,9 +32,6 @@ namespace OpenAI
         [JsonPropertyName("message")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Message { get; private set; }
-
-        [JsonIgnore]
-        public string Object => "error";
 
         /// <summary>
         /// The name of the parameter that caused the error, if applicable.
@@ -64,8 +49,19 @@ namespace OpenAI
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Type { get; private set; }
 
-        public static implicit operator Exception(Error error)
-            => error.Exception ?? new Exception(error.ToString());
+        /// <summary>
+        /// The line number of the input file where the error occurred, if applicable.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("line")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Line { get; private set; }
+
+        [JsonIgnore]
+        public string Object => "error";
+
+        [JsonIgnore]
+        public Exception Exception { get; }
 
         public override string ToString()
         {
@@ -94,22 +90,8 @@ namespace OpenAI
 
             return builder.ToString();
         }
-    }
 
-    public sealed class Error2
-    {
-        /// <summary>
-        /// One of server_error or rate_limit_exceeded.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("code")]
-        public string Code { get; private set; }
-
-        /// <summary>
-        /// A human-readable description of the error.
-        /// </summary>
-        [JsonInclude]
-        [JsonPropertyName("message")]
-        public string Message { get; private set; }
+        public static implicit operator Exception(Error error)
+            => error.Exception ?? new Exception(error.ToString());
     }
 }

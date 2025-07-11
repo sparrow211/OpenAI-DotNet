@@ -1,5 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using OpenAI.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -75,16 +76,19 @@ namespace OpenAI.Assistants
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("tools")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<Tool> Tools { get; private set; }
 
         /// <summary>
-        /// A list of file IDs attached to this assistant.
-        /// There can be a maximum of 20 files attached to the assistant.
-        /// Files are ordered by their creation date in ascending order.
+        /// A set of resources that are used by the assistant's tools.
+        /// The resources are specific to the type of tool.
+        /// For example, the code_interpreter tool requires a list of file IDs,
+        /// while the file_search tool requires a list of vector store IDs.
         /// </summary>
         [JsonInclude]
-        [JsonPropertyName("file_ids")]
-        public IReadOnlyList<string> FileIds { get; private set; }
+        [JsonPropertyName("tool_resources")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ToolResources ToolResources { get; private set; }
 
         /// <summary>
         /// Set of 16 key-value pairs that can be attached to an object.
@@ -93,7 +97,59 @@ namespace OpenAI.Assistants
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("metadata")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+
+        /// <summary>
+        /// What sampling temperature to use, between 0 and 2.
+        /// Higher values like 0.8 will make the output more random,
+        /// while lower values like 0.2 will make it more focused and deterministic.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("temperature")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? Temperature { get; private set; }
+
+        /// <summary>
+        /// An alternative to sampling with temperature, called nucleus sampling,
+        /// where the model considers the results of the tokens with top_p probability mass.
+        /// So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("top_p")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? TopP { get; private set; }
+
+        /// <summary>
+        /// Constrains effort on reasoning for reasoning models.
+        /// Currently supported values are low, medium, and high.
+        /// Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("reasoning_effort")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public ReasoningEffort ReasoningEffort { get; private set; }
+
+        /// <summary>
+        /// Specifies the format that the model must output.
+        /// Setting to <see cref="TextResponseFormat.Json"/> or <see cref="TextResponseFormat.JsonSchema"/> enables JSON mode,
+        /// which guarantees the message the model generates is valid JSON.
+        /// </summary>
+        /// <remarks>
+        /// Important: When using JSON mode you must still instruct the model to produce JSON yourself via some conversation message,
+        /// for example via your system message. If you don't do this, the model may generate an unending stream of
+        /// whitespace until the generation reaches the token limit, which may take a lot of time and give the appearance
+        /// of a "stuck" request. Also note that the message content may be partial (i.e. cut off) if finish_reason="length",
+        /// which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
+        /// </remarks>
+        [JsonInclude]
+        [JsonPropertyName("response_format")]
+        [JsonConverter(typeof(TextResponseFormatConfigurationConverter))]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public TextResponseFormatConfiguration ResponseFormatObject { get; private set; }
+
+        [JsonIgnore]
+        public TextResponseFormat ResponseFormat => ResponseFormatObject ?? TextResponseFormat.Auto;
 
         public static implicit operator string(AssistantResponse assistant) => assistant?.Id;
 

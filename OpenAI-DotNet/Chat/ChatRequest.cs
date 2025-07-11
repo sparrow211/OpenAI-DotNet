@@ -1,5 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using OpenAI.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,40 +22,23 @@ namespace OpenAI.Chat
             int? maxTokens = null,
             int? number = null,
             double? presencePenalty = null,
-            ChatResponseFormat responseFormat = ChatResponseFormat.Text,
+            TextResponseFormat responseFormat = TextResponseFormat.Auto,
             int? seed = null,
             string[] stops = null,
             double? temperature = null,
             double? topP = null,
             int? topLogProbs = null,
+            bool? parallelToolCalls = null,
+            JsonSchema jsonSchema = null,
+            AudioConfig audioConfig = null,
+            ReasoningEffort? reasoningEffort = null,
             string user = null)
-            : this(messages, model, frequencyPenalty, logitBias, maxTokens, number, presencePenalty, responseFormat, seed, stops, temperature, topP, topLogProbs, user)
+            : this(messages, model, frequencyPenalty, logitBias, maxTokens, number, presencePenalty,
+                responseFormat, seed, stops, temperature, topP, topLogProbs, parallelToolCalls, jsonSchema, audioConfig, reasoningEffort, user)
         {
-            var toolList = tools?.ToList();
-
-            if (toolList != null && toolList.Any())
-            {
-                if (string.IsNullOrWhiteSpace(toolChoice))
-                {
-                    ToolChoice = "auto";
-                }
-                else
-                {
-                    if (!toolChoice.Equals("none") &&
-                        !toolChoice.Equals("auto"))
-                    {
-                        var tool = toolList.FirstOrDefault(t => t.Function.Name.Contains(toolChoice)) ??
-                            throw new ArgumentException($"The specified tool choice '{toolChoice}' was not found in the list of tools");
-                        ToolChoice = new { type = "function", function = new { name = tool.Function.Name } };
-                    }
-                    else
-                    {
-                        ToolChoice = toolChoice;
-                    }
-                }
-            }
-
-            Tools = toolList?.ToList();
+            tools.ProcessTools<Tool>(toolChoice, out var toolList, out var activeTool);
+            Tools = toolList;
+            ToolChoice = activeTool;
         }
 
         /// <summary>
@@ -89,8 +73,7 @@ namespace OpenAI.Chat
         /// Up to 4 sequences where the API will stop generating further tokens.
         /// </param>
         /// <param name="maxTokens">
-        /// The maximum number of tokens allowed for the generated answer.
-        /// By default, the number of tokens the model can return will be (4096 - prompt tokens).
+        /// An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
         /// </param>
         /// <param name="presencePenalty">
         /// Number between -2.0 and 2.0.
@@ -100,7 +83,7 @@ namespace OpenAI.Chat
         /// </param>
         /// <param name="responseFormat">
         /// An object specifying the format that the model must output.
-        /// Setting to <see cref="ChatResponseFormat.Json"/> enables JSON mode,
+        /// Setting to <see cref="TextResponseFormat.Json"/> or <see cref="TextResponseFormat.JsonSchema"/> enables JSON mode,
         /// which guarantees the message the model generates is valid JSON.
         /// </param>
         /// <param name="frequencyPenalty">
@@ -122,6 +105,22 @@ namespace OpenAI.Chat
         /// An integer between 0 and 5 specifying the number of most likely tokens to return at each token position,
         /// each with an associated log probability.
         /// </param>
+        /// <param name="jsonSchema">
+        /// The <see cref="JsonSchema"/> to use for structured JSON outputs.<br/>
+        /// <see href="https://platform.openai.com/docs/guides/structured-outputs"/><br/>
+        /// <see href="https://json-schema.org/overview/what-is-jsonschema"/>
+        /// </param>
+        /// <param name="parallelToolCalls">
+        /// Whether to enable parallel function calling during tool use.
+        /// </param>
+        /// <param name="audioConfig">
+        /// Parameters for audio output. <see cref="Chat.AudioConfig"/>.
+        /// </param>
+        /// <param name="reasoningEffort">
+        /// Constrains the effort of reasoning for <see href="https://platform.openai.com/docs/guides/reasoning">Reasoning Models</see>.<br/>
+        /// Currently supported values are: Low, Medium, High. Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning response.<br/>
+        /// <b>Reasoning models only!</b>
+        /// </param>
         /// <param name="user">
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </param>
@@ -133,12 +132,16 @@ namespace OpenAI.Chat
             int? maxTokens = null,
             int? number = null,
             double? presencePenalty = null,
-            ChatResponseFormat responseFormat = ChatResponseFormat.Text,
+            TextResponseFormat responseFormat = TextResponseFormat.Auto,
             int? seed = null,
             string[] stops = null,
             double? temperature = null,
             double? topP = null,
             int? topLogProbs = null,
+            bool? parallelToolCalls = null,
+            JsonSchema jsonSchema = null,
+            AudioConfig audioConfig = null,
+            ReasoningEffort? reasoningEffort = null,
             string user = null)
         {
             Messages = messages?.ToList();
@@ -148,19 +151,58 @@ namespace OpenAI.Chat
                 throw new ArgumentNullException(nameof(messages), $"Missing required {nameof(messages)} parameter");
             }
 
-            Model = string.IsNullOrWhiteSpace(model) ? Models.Model.GPT3_5_Turbo : model;
+            Model = string.IsNullOrWhiteSpace(model) ? Models.Model.GPT4o : model;
+
+            if (reasoningEffort.HasValue)
+            {
+                ReasoningEffort = reasoningEffort.Value;
+            }
+
+            if (audioConfig != null && !Model.Contains("audio"))
+            {
+                throw new ArgumentException("Audio settings are only valid for models that support audio output", nameof(audioConfig));
+            }
+
+            if (Model.Contains("audio"))
+            {
+                Modalities = Modality.Text | Modality.Audio;
+                AudioConfig = audioConfig ?? new(Voice.Alloy);
+            }
+            else
+            {
+                Modalities = Modality.Text & Modality.Audio;
+            }
+
             FrequencyPenalty = frequencyPenalty;
             LogitBias = logitBias;
-            MaxTokens = maxTokens;
+            MaxCompletionTokens = maxTokens;
             Number = number;
             PresencePenalty = presencePenalty;
-            ResponseFormat = ChatResponseFormat.Json == responseFormat ? responseFormat : null;
+
+            if (jsonSchema != null)
+            {
+                ResponseFormatObject = jsonSchema;
+            }
+            else
+            {
+                ResponseFormatObject = responseFormat switch
+                {
+                    TextResponseFormat.Text or
+#pragma warning disable CS0618 // Type or member is obsolete
+                        TextResponseFormat.Json
+#pragma warning restore CS0618 // Type or member is obsolete
+                        => responseFormat,
+                    _ => null
+                };
+            }
+
             Seed = seed;
             Stops = stops;
             Temperature = temperature;
             TopP = topP;
             LogProbs = topLogProbs.HasValue ? topLogProbs.Value > 0 : null;
             TopLogProbs = topLogProbs;
+            ParallelToolCalls = parallelToolCalls;
             User = user;
         }
 
@@ -177,12 +219,38 @@ namespace OpenAI.Chat
         public string Model { get; }
 
         /// <summary>
+        /// Whether or not to store the output of this chat completion request for use in our model distillation or evals products.
+        /// </summary>
+        [JsonPropertyName("store")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Store { get; set; }
+
+        /// <summary>
+        /// Constrains the effort of reasoning for <see href="https://platform.openai.com/docs/guides/reasoning">Reasoning Models</see>.<br/>
+        /// Currently supported values are: Low, Medium, High. Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning response.
+        /// </summary>
+        /// <remarks>
+        /// <b>Reasoning models only!</b>
+        /// </remarks>
+        [JsonPropertyName("reasoning_effort")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ReasoningEffort? ReasoningEffort { get; }
+
+        /// <summary>
+        /// Developer-defined tags and values used for filtering completions in the dashboard.
+        /// </summary>
+        [JsonPropertyName("metadata")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyDictionary<string, object> Metadata { get; set; }
+
+        /// <summary>
         /// Number between -2.0 and 2.0.
         /// Positive values penalize new tokens based on their existing frequency in the text so far,
         /// decreasing the model's likelihood to repeat the same line verbatim.<br/>
         /// Defaults to 0
         /// </summary>
         [JsonPropertyName("frequency_penalty")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? FrequencyPenalty { get; }
 
         /// <summary>
@@ -205,7 +273,7 @@ namespace OpenAI.Chat
         /// This option is currently not available on the gpt-4-vision-preview model.
         /// </remarks>
         [JsonPropertyName("logprobs")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? LogProbs { get; }
 
         /// <summary>
@@ -216,15 +284,27 @@ namespace OpenAI.Chat
         /// <see cref="LogProbs"/> must be set to true if this parameter is used.
         /// </remarks>
         [JsonPropertyName("top_logprobs")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? TopLogProbs { get; }
 
         /// <summary>
         /// The maximum number of tokens allowed for the generated answer.
         /// By default, the number of tokens the model can return will be (4096 - prompt tokens).
         /// </summary>
+        /// <remarks>
+        /// Still used for older models that support it.
+        /// </remarks>
         [JsonPropertyName("max_tokens")]
-        public int? MaxTokens { get; }
+        [Obsolete("use MaxCompletionTokens instead")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MaxTokens { get; set; }
+
+        /// <summary>
+        /// An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
+        /// </summary>
+        [JsonPropertyName("max_completion_tokens")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MaxCompletionTokens { get; }
 
         /// <summary>
         /// How many chat completion choices to generate for each input message.<br/>
@@ -233,6 +313,27 @@ namespace OpenAI.Chat
         [JsonPropertyName("n")]
         public int? Number { get; }
 
+        [JsonPropertyName("modalities")]
+        [JsonConverter(typeof(ModalityConverter))]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public Modality Modalities { get; }
+
+        /// <summary>
+        /// Configuration for a Predicted Output, which can greatly improve response times when large parts of the model response are known ahead of time.
+        /// This is most common when you are regenerating a file with only minor changes to most of the content.
+        /// </summary>
+        [JsonPropertyName("prediction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public object Prediction { get; set; }
+
+        /// <summary>
+        /// Parameters for audio output.
+        /// Required when audio output is requested with modalities: ["audio"].
+        /// </summary>
+        [JsonPropertyName("audio")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public AudioConfig AudioConfig { get; }
+
         /// <summary>
         /// Number between -2.0 and 2.0.
         /// Positive values penalize new tokens based on whether they appear in the text so far,
@@ -240,23 +341,27 @@ namespace OpenAI.Chat
         /// Defaults to 0
         /// </summary>
         [JsonPropertyName("presence_penalty")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? PresencePenalty { get; }
+
+        [JsonPropertyName("response_format")]
+        [JsonConverter(typeof(TextResponseFormatConfigurationConverter))]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TextResponseFormatConfiguration ResponseFormatObject { get; internal set; }
 
         /// <summary>
         /// An object specifying the format that the model must output.
-        /// Setting to <see cref="ChatResponseFormat.Json"/> enables JSON mode,
+        /// Setting to <see cref="TextResponseFormat.Json"/> or <see cref="TextResponseFormat.JsonSchema"/> enables JSON mode,
         /// which guarantees the message the model generates is valid JSON.
         /// </summary>
         /// <remarks>
-        /// Important: When using JSON mode you must still instruct the model to produce JSON yourself via some conversation message,
-        /// for example via your system message. If you don't do this, the model may generate an unending stream of
-        /// whitespace until the generation reaches the token limit, which may take a lot of time and give the appearance
-        /// of a "stuck" request. Also note that the message content may be partial (i.e. cut off) if finish_reason="length",
+        /// Important: When using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.
+        /// Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit,
+        /// resulting in a long-running and seemingly "stuck" request. Also note that the message content may be partially cut off if finish_reason="length",
         /// which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
         /// </remarks>
-        [JsonPropertyName("response_format")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public ResponseFormat ResponseFormat { get; }
+        [JsonIgnore]
+        public TextResponseFormat ResponseFormat => ResponseFormatObject ?? TextResponseFormat.Auto;
 
         /// <summary>
         /// This feature is in Beta. If specified, our system will make a best effort to sample deterministically,
@@ -265,12 +370,26 @@ namespace OpenAI.Chat
         /// monitor changes in the backend.
         /// </summary>
         [JsonPropertyName("seed")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? Seed { get; }
+
+        /// <summary>
+        /// Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:<br/>
+        /// - If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted.<br/>
+        /// - If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarantee.<br/>
+        /// - If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarantee.<br/>
+        /// - When not set, the default behavior is 'auto'.<br/>
+        /// When this parameter is set, the response body will include the service_tier utilized.
+        /// </summary>
+        [JsonPropertyName("service_tier")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string ServiceTier { get; set; }
 
         /// <summary>
         /// Up to 4 sequences where the API will stop generating further tokens.
         /// </summary>
         [JsonPropertyName("stop")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string[] Stops { get; }
 
         /// <summary>
@@ -282,6 +401,10 @@ namespace OpenAI.Chat
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool Stream { get; internal set; }
 
+        [JsonPropertyName("stream_options")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public StreamOptions StreamOptions { get; internal set; }
+
         /// <summary>
         /// What sampling temperature to use, between 0 and 2.
         /// Higher values like 0.8 will make the output more random, while lower values like 0.2 will
@@ -290,6 +413,7 @@ namespace OpenAI.Chat
         /// Defaults to 1
         /// </summary>
         [JsonPropertyName("temperature")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Temperature { get; }
 
         /// <summary>
@@ -300,6 +424,7 @@ namespace OpenAI.Chat
         /// Defaults to 1
         /// </summary>
         [JsonPropertyName("top_p")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? TopP { get; }
 
         /// <summary>
@@ -307,6 +432,7 @@ namespace OpenAI.Chat
         /// Use this to provide a list of functions the model may generate JSON inputs for.
         /// </summary>
         [JsonPropertyName("tools")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<Tool> Tools { get; }
 
         /// <summary>
@@ -319,30 +445,22 @@ namespace OpenAI.Chat
         /// 'auto' is the default if functions are present.<br/>
         /// </summary>
         [JsonPropertyName("tool_choice")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public dynamic ToolChoice { get; }
+
+        /// <summary>
+        /// Whether to enable parallel function calling during tool use.
+        /// </summary>
+        [JsonPropertyName("parallel_tool_calls")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? ParallelToolCalls { get; }
 
         /// <summary>
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </summary>
         [JsonPropertyName("user")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string User { get; }
-
-        /// <summary>
-        /// Pass "auto" to let the OpenAI service decide, "none" if none are to be called,
-        /// or "functionName" to force function call. Defaults to "auto".
-        /// </summary>
-        [Obsolete("Use ToolChoice")]
-        [JsonPropertyName("function_call")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public dynamic FunctionCall { get; }
-
-        /// <summary>
-        /// An optional list of functions to get arguments for.
-        /// </summary>
-        [Obsolete("Use Tools")]
-        [JsonPropertyName("functions")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public IReadOnlyList<Function> Functions { get; }
 
         /// <inheritdoc />
         public override string ToString() => JsonSerializer.Serialize(this, OpenAIClient.JsonSerializationOptions);

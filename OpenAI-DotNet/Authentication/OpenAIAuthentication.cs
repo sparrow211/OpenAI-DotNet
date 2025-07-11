@@ -11,13 +11,15 @@ namespace OpenAI
     /// </summary>
     public sealed class OpenAIAuthentication
     {
-        private const string OPENAI_KEY = "OPENAI_KEY";
-        private const string OPENAI_API_KEY = "OPENAI_API_KEY";
-        private const string OPENAI_SECRET_KEY = "OPENAI_SECRET_KEY";
-        private const string TEST_OPENAI_SECRET_KEY = "TEST_OPENAI_SECRET_KEY";
-        private const string OPENAI_ORGANIZATION_ID = "OPENAI_ORGANIZATION_ID";
-        private const string OPEN_AI_ORGANIZATION_ID = "OPEN_AI_ORGANIZATION_ID";
-        private const string ORGANIZATION = "ORGANIZATION";
+        internal const string CONFIG_FILE = ".openai";
+        private const string OPENAI_KEY = nameof(OPENAI_KEY);
+        private const string OPENAI_API_KEY = nameof(OPENAI_API_KEY);
+        private const string OPENAI_SECRET_KEY = nameof(OPENAI_SECRET_KEY);
+        private const string OPENAI_PROJECT_ID = nameof(OPENAI_PROJECT_ID);
+        private const string OPEN_AI_PROJECT_ID = nameof(OPEN_AI_PROJECT_ID);
+        private const string TEST_OPENAI_SECRET_KEY = nameof(TEST_OPENAI_SECRET_KEY);
+        private const string OPENAI_ORGANIZATION_ID = nameof(OPENAI_ORGANIZATION_ID);
+        private const string OPEN_AI_ORGANIZATION_ID = nameof(OPEN_AI_ORGANIZATION_ID);
 
         private readonly AuthInfo authInfo;
 
@@ -31,6 +33,11 @@ namespace OpenAI
         /// Usage from these API requests will count against the specified organization's subscription quota.
         /// </summary>
         public string OrganizationId => authInfo.OrganizationId;
+
+        /// <summary>
+        /// For users that specify specific projects.
+        /// </summary>
+        public string ProjectId => authInfo.ProjectId;
 
         /// <summary>
         /// Allows implicit casting from a string, so that a simple string API key can be provided in place of an instance of <see cref="OpenAIAuthentication"/>.
@@ -54,14 +61,17 @@ namespace OpenAI
         /// For users who belong to multiple organizations, you can pass a header to specify which organization is used for an API request.
         /// Usage from these API requests will count against the specified organization's subscription quota.
         /// </param>
-        public OpenAIAuthentication(string apiKey, string organization) => authInfo = new AuthInfo(apiKey, organization);
+        /// <param name="projectId">
+        /// Optional, Project id to specify.
+        /// </param>
+        public OpenAIAuthentication(string apiKey, string organization, string projectId = null) => authInfo = new AuthInfo(apiKey, organization, projectId);
 
         private static OpenAIAuthentication cachedDefault;
 
         /// <summary>
         /// The default authentication to use when no other auth is specified.
         /// This can be set manually, or automatically loaded via environment variables or a config file.
-        /// <seealso cref="LoadFromEnv"/><seealso cref="LoadFromDirectory"/>
+        /// <seealso cref="LoadFromEnvironment"/><seealso cref="LoadFromDirectory"/>
         /// </summary>
         public static OpenAIAuthentication Default
         {
@@ -74,12 +84,16 @@ namespace OpenAI
 
                 var auth = LoadFromDirectory() ??
                            LoadFromDirectory(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)) ??
-                           LoadFromEnv();
+                           LoadFromEnvironment();
                 cachedDefault = auth ?? throw new UnauthorizedAccessException("Failed to load a valid API Key!");
                 return auth;
             }
             internal set => cachedDefault = value;
         }
+
+        [Obsolete("use LoadFromEnvironment")]
+        public static OpenAIAuthentication LoadFromEnv(string organizationId = null)
+            => LoadFromEnvironment(organizationId);
 
         /// <summary>
         /// Attempts to load api keys from environment variables, as "OPENAI_KEY" (or "OPENAI_SECRET_KEY", for backwards compatibility)
@@ -92,7 +106,7 @@ namespace OpenAI
         /// Returns the loaded <see cref="OpenAIAuthentication"/> any api keys were found,
         /// or <see langword="null"/> if there were no matching environment vars.
         /// </returns>
-        public static OpenAIAuthentication LoadFromEnv(string organizationId = null)
+        public static OpenAIAuthentication LoadFromEnvironment(string organizationId = null)
         {
             var apiKey = Environment.GetEnvironmentVariable(OPENAI_KEY);
 
@@ -121,12 +135,14 @@ namespace OpenAI
                 organizationId = Environment.GetEnvironmentVariable(OPENAI_ORGANIZATION_ID);
             }
 
-            if (string.IsNullOrWhiteSpace(organizationId))
+            var projectId = Environment.GetEnvironmentVariable(OPEN_AI_PROJECT_ID);
+
+            if (string.IsNullOrWhiteSpace(projectId))
             {
-                organizationId = Environment.GetEnvironmentVariable(ORGANIZATION);
+                projectId = Environment.GetEnvironmentVariable(OPENAI_PROJECT_ID);
             }
 
-            return string.IsNullOrEmpty(apiKey) ? null : new OpenAIAuthentication(apiKey, organizationId);
+            return string.IsNullOrEmpty(apiKey) ? null : new OpenAIAuthentication(apiKey, organizationId, projectId);
         }
 
         /// <summary>
@@ -159,7 +175,7 @@ namespace OpenAI
         /// or <see langword="null"/> if it was not successful in finding a config
         /// (or if the config file didn't contain correctly formatted API keys)
         /// </returns>
-        public static OpenAIAuthentication LoadFromDirectory(string directory = null, string filename = ".openai", bool searchUp = true)
+        public static OpenAIAuthentication LoadFromDirectory(string directory = null, string filename = CONFIG_FILE, bool searchUp = true)
         {
             if (string.IsNullOrWhiteSpace(directory))
             {
@@ -188,6 +204,7 @@ namespace OpenAI
 
                     var lines = File.ReadAllLines(filePath);
                     string apiKey = null;
+                    string projectId = null;
                     string organization = null;
 
                     foreach (var line in lines)
@@ -207,16 +224,19 @@ namespace OpenAI
                                 case TEST_OPENAI_SECRET_KEY:
                                     apiKey = nextPart.Trim();
                                     break;
-                                case ORGANIZATION:
                                 case OPEN_AI_ORGANIZATION_ID:
                                 case OPENAI_ORGANIZATION_ID:
                                     organization = nextPart.Trim();
+                                    break;
+                                case OPENAI_PROJECT_ID:
+                                case OPEN_AI_PROJECT_ID:
+                                    projectId = nextPart.Trim();
                                     break;
                             }
                         }
                     }
 
-                    authInfo = new AuthInfo(apiKey, organization);
+                    authInfo = new AuthInfo(apiKey, organization, projectId);
                 }
 
                 if (searchUp)

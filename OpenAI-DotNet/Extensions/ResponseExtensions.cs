@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -35,13 +36,22 @@ namespace OpenAI.Extensions
             NumberDecimalSeparator = "."
         };
 
+        public static readonly JsonSerializerOptions DebugJsonOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         internal static void SetResponseData(this BaseResponse response, HttpResponseHeaders headers, OpenAIClient client)
         {
-            if (response is IListResponse<BaseResponse> listResponse)
+            if (response is IListResponse<IListItem> listResponse)
             {
                 foreach (var item in listResponse.Items)
                 {
-                    SetResponseData(item, headers, client);
+                    if (item is BaseResponse baseResponse)
+                    {
+                        SetResponseData(baseResponse, headers, client);
+                    }
                 }
             }
 
@@ -106,7 +116,37 @@ namespace OpenAI.Extensions
             }
         }
 
-        internal static async Task<string> ReadAsStringAsync(this HttpResponseMessage response, bool debugResponse, HttpContent requestContent = null, MemoryStream responseStream = null, CancellationToken cancellationToken = default, [CallerMemberName] string methodName = null)
+        internal static async Task CheckResponseAsync(this HttpResponseMessage response, bool debug, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
+        {
+            if (!response.IsSuccessStatusCode || debug)
+            {
+                await response.ReadAsStringAsync(debug, null, null, null, cancellationToken, methodName).ConfigureAwait(false);
+            }
+        }
+
+        internal static async Task CheckResponseAsync(this HttpResponseMessage response, bool debug, StringContent requestContent, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
+        {
+            if (!response.IsSuccessStatusCode || debug)
+            {
+                await response.ReadAsStringAsync(debug, requestContent, null, null, cancellationToken, methodName).ConfigureAwait(false);
+            }
+        }
+
+        internal static async Task CheckResponseAsync(this HttpResponseMessage response, bool debug, StringContent requestContent, MemoryStream responseStream, List<ServerSentEvent> events, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
+        {
+            if (!response.IsSuccessStatusCode || debug)
+            {
+                await response.ReadAsStringAsync(debug, requestContent, responseStream, events, cancellationToken, methodName).ConfigureAwait(false);
+            }
+        }
+
+        internal static async Task<string> ReadAsStringAsync(this HttpResponseMessage response, bool debugResponse, HttpContent requestContent, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
+            => await response.ReadAsStringAsync(debugResponse, requestContent, null, null, cancellationToken, methodName).ConfigureAwait(false);
+
+        internal static async Task<string> ReadAsStringAsync(this HttpResponseMessage response, bool debugResponse, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
+            => await response.ReadAsStringAsync(debugResponse, null, null, null, cancellationToken, methodName).ConfigureAwait(false);
+
+        private static async Task<string> ReadAsStringAsync(this HttpResponseMessage response, bool debugResponse, HttpContent requestContent, MemoryStream responseStream, List<ServerSentEvent> events, CancellationToken cancellationToken, [CallerMemberName] string methodName = null)
         {
             var responseAsString = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var debugMessage = new StringBuilder();
@@ -185,7 +225,7 @@ namespace OpenAI.Extensions
                     ["Headers"] = response.Headers.ToDictionary(pair => pair.Key, pair => pair.Value),
                 };
 
-                if (responseStream != null || !string.IsNullOrWhiteSpace(responseAsString))
+                if (events != null || responseStream != null || !string.IsNullOrWhiteSpace(responseAsString))
                 {
                     debugMessageObject["Response"]["Body"] = new Dictionary<string, object>();
                 }
@@ -196,12 +236,33 @@ namespace OpenAI.Extensions
 
                     try
                     {
-                        ((Dictionary<string, object>)debugMessageObject["Response"]["Body"])["Stream"] = JsonNode.Parse(body);
+                        ((Dictionary<string, object>)debugMessageObject["Response"]["Body"])["Events"] = JsonNode.Parse(body);
                     }
                     catch
                     {
-                        ((Dictionary<string, object>)debugMessageObject["Response"]["Body"])["Stream"] = body;
+                        ((Dictionary<string, object>)debugMessageObject["Response"]["Body"])["Events"] = body;
                     }
+                }
+                else if (events != null)
+                {
+                    var array = new JsonArray();
+
+                    foreach (var @event in events)
+                    {
+                        var @object = new JsonObject
+                        {
+                            [@event.Event.ToString().ToLower()] = JsonNode.Parse(@event.Value.ToJsonString())
+                        };
+
+                        if (@event.Data != null)
+                        {
+                            @object[ServerSentEventKind.Data.ToString().ToLower()] = JsonNode.Parse(@event.Data.ToJsonString());
+                        }
+
+                        array.Add(@object);
+                    }
+
+                    ((Dictionary<string, object>)debugMessageObject["Response"]["Body"])["Events"] = array;
                 }
 
                 if (!string.IsNullOrWhiteSpace(responseAsString))
@@ -216,7 +277,7 @@ namespace OpenAI.Extensions
                     }
                 }
 
-                debugMessage.Append(JsonSerializer.Serialize(debugMessageObject, new JsonSerializerOptions { WriteIndented = true }));
+                debugMessage.Append(JsonSerializer.Serialize(debugMessageObject, DebugJsonOptions));
                 Console.WriteLine(debugMessage.ToString());
             }
 
@@ -228,18 +289,65 @@ namespace OpenAI.Extensions
             return responseAsString;
         }
 
-        internal static async Task CheckResponseAsync(this HttpResponseMessage response, bool debug, StringContent requestContent = null, MemoryStream responseStream = null, CancellationToken cancellationToken = default, [CallerMemberName] string methodName = null)
+        internal static async Task<T> DeserializeAsync<T>(this HttpResponseMessage response, bool debug, OpenAIClient client, CancellationToken cancellationToken)
         {
-            if (!response.IsSuccessStatusCode || debug)
+            var responseAsString = await response.ReadAsStringAsync(debug, cancellationToken);
+            var result = JsonSerializer.Deserialize<T>(responseAsString, OpenAIClient.JsonSerializationOptions);
+
+            if (result is BaseResponse baseResponse)
             {
-                await response.ReadAsStringAsync(debug, requestContent, responseStream, cancellationToken, methodName).ConfigureAwait(false);
+                baseResponse.SetResponseData(response.Headers, client);
             }
+
+            return result;
         }
 
-        internal static T Deserialize<T>(this HttpResponseMessage response, string json, OpenAIClient client) where T : BaseResponse
+        internal static async Task<T> DeserializeAsync<T>(this HttpResponseMessage response, bool debug, HttpContent payload, OpenAIClient client, CancellationToken cancellationToken)
+        {
+            var responseAsString = await response.ReadAsStringAsync(debug, payload, cancellationToken);
+            var result = JsonSerializer.Deserialize<T>(responseAsString, OpenAIClient.JsonSerializationOptions);
+
+            if (result is BaseResponse baseResponse)
+            {
+                baseResponse.SetResponseData(response.Headers, client);
+            }
+
+            return result;
+        }
+
+        internal static T Deserialize<T>(this HttpResponseMessage response, string json, OpenAIClient client)
         {
             var result = JsonSerializer.Deserialize<T>(json, OpenAIClient.JsonSerializationOptions);
-            result.SetResponseData(response.Headers, client);
+
+            if (result is BaseResponse baseResponse)
+            {
+                baseResponse.SetResponseData(response.Headers, client);
+            }
+
+            return result;
+        }
+
+        internal static T Deserialize<T>(this HttpResponseMessage response, ServerSentEvent ssEvent, OpenAIClient client)
+            => Deserialize<T>(response, ssEvent.Data ?? ssEvent.Value, client);
+
+        internal static T Deserialize<T>(this HttpResponseMessage response, JsonNode jNode, OpenAIClient client)
+        {
+            T result;
+            try
+            {
+                result = jNode.Deserialize<T>(OpenAIClient.JsonSerializationOptions);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Failed to parse {typeof(T).Name} -> {jNode.ToJsonString(DebugJsonOptions)}\n{e}");
+                throw;
+            }
+
+            if (result is BaseResponse resultResponse)
+            {
+                resultResponse.SetResponseData(response.Headers, client);
+            }
+
             return result;
         }
     }

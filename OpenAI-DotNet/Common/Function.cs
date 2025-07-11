@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,7 +17,7 @@ namespace OpenAI
     /// <summary>
     /// <see href="https://platform.openai.com/docs/guides/function-calling"/>
     /// </summary>
-    public sealed class Function
+    public sealed class Function : ITool
     {
         private const string NameRegex = "^[a-zA-Z0-9_-]{1,64}$";
 
@@ -35,17 +36,23 @@ namespace OpenAI
         /// <param name="parameters">
         /// An optional JSON object describing the parameters of the function that the model can generate.
         /// </param>
-        public Function(string name, string description = null, JsonNode parameters = null)
+        /// <param name="strict">
+        /// Whether to enable strict schema adherence when generating the function call.
+        /// If set to true, the model will follow the exact schema defined in the parameters field.
+        /// Only a subset of JSON Schema is supported when strict is true. Learn more about Structured Outputs in the function calling guide.<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/assistants/docs/guides/function-calling"/>
+        /// </param>
+        public Function(string name, string description = null, JsonNode parameters = null, bool? strict = null)
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, NameRegex))
+            if (!Regex.IsMatch(name, NameRegex))
             {
-                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex}");
+                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex} \"{name}\"");
             }
 
             Name = name;
             Description = description;
             Parameters = parameters;
-            functionCache[Name] = this;
+            Strict = strict;
         }
 
         /// <summary>
@@ -61,25 +68,42 @@ namespace OpenAI
         /// <param name="parameters">
         /// An optional JSON describing the parameters of the function that the model can generate.
         /// </param>
-        public Function(string name, string description, string parameters)
+        /// <param name="strict">
+        /// Whether to enable strict schema adherence when generating the function call.
+        /// If set to true, the model will follow the exact schema defined in the parameters field.
+        /// Only a subset of JSON Schema is supported when strict is true. Learn more about Structured Outputs in the function calling guide.<br/>
+        /// <see href="https://platform.openai.com/docs/api-reference/assistants/docs/guides/function-calling"/>
+        /// </param>
+        public Function(string name, string description, string parameters, bool? strict = null)
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, NameRegex))
+            if (!Regex.IsMatch(name, NameRegex))
             {
-                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex}");
+                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex} \"{name}\"");
             }
 
             Name = name;
             Description = description;
             Parameters = JsonNode.Parse(parameters);
-            functionCache[Name] = this;
+            Strict = strict;
         }
 
-
-        internal Function(string name, string description, MethodInfo method, object instance = null)
+        internal Function(string name, JsonNode arguments, bool? strict = null)
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, NameRegex))
+            Name = name;
+            Arguments = arguments;
+            Strict = strict;
+        }
+
+        private Function(string name, string description, MethodInfo method, object instance = null, bool? strict = null)
+        {
+            if (!Regex.IsMatch(name, NameRegex))
             {
-                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex}");
+                throw new ArgumentException($"The name of the function does not conform to naming standards: {NameRegex} \"{name}\"");
+            }
+
+            if (functionCache.ContainsKey(name))
+            {
+                throw new ArgumentException($"The function \"{name}\" is already registered.");
             }
 
             Name = name;
@@ -87,50 +111,56 @@ namespace OpenAI
             MethodInfo = method;
             Parameters = method.GenerateJsonSchema();
             Instance = instance;
+            Strict = strict;
             functionCache[Name] = this;
         }
 
+        internal static Function GetOrCreateFunction(string name, string description, MethodInfo method, object instance = null, bool? strict = null)
+            => functionCache.TryGetValue(name, out var function)
+                ? function
+                : new Function(name, description, method, instance, strict);
+
         #region Func<,> Overloads
 
-        public static Function FromFunc<TResult>(string name, Func<TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<TResult>(string name, Func<TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, TResult>(string name, Func<T1, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, TResult>(string name, Func<T1, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, TResult>(string name, Func<T1, T2, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, TResult>(string name, Func<T1, T2, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, TResult>(string name, Func<T1, T2, T3, TResult> function, string description = null)
-        => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, TResult>(string name, Func<T1, T2, T3, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, TResult>(string name, Func<T1, T2, T3, T4, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, TResult>(string name, Func<T1, T2, T3, T4, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, TResult>(string name, Func<T1, T2, T3, T4, T5, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, TResult>(string name, Func<T1, T2, T3, T4, T5, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
-        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult> function, string description = null)
-            => new(name, description, function.Method, function.Target);
+        public static Function FromFunc<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult>(string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult> function, string description = null, bool? strict = null)
+            => GetOrCreateFunction(name, description, function.Method, function.Target, strict);
 
         #endregion Func<,> Overloads
 
-        internal Function(Function other) => CopyFrom(other);
+        internal Function(Function other) => AppendFrom(other);
 
         /// <summary>
         /// The name of the function to generate arguments for.<br/>
@@ -141,11 +171,17 @@ namespace OpenAI
         [JsonPropertyName("name")]
         public string Name { get; private set; }
 
+        [JsonInclude]
+        [JsonPropertyName("type")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Type { get; internal set; }
+
         /// <summary>
         /// The optional description of the function.
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("description")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Description { get; private set; }
 
         private string parametersString;
@@ -158,14 +194,21 @@ namespace OpenAI
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("parameters")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public JsonNode Parameters
         {
             get
             {
-                if (parameters == null &&
-                    !string.IsNullOrWhiteSpace(parametersString))
+                if (parameters == null)
                 {
-                    parameters = JsonNode.Parse(parametersString);
+                    if (!string.IsNullOrWhiteSpace(parametersString))
+                    {
+                        parameters = JsonNode.Parse(parametersString);
+                    }
+                    else
+                    {
+                        parameters = null;
+                    }
                 }
 
                 return parameters;
@@ -182,20 +225,39 @@ namespace OpenAI
         /// </summary>
         [JsonInclude]
         [JsonPropertyName("arguments")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public JsonNode Arguments
         {
             get
             {
-                if (arguments == null &&
-                    !string.IsNullOrWhiteSpace(argumentsString))
+                if (arguments == null)
                 {
-                    arguments = JsonValue.Create(argumentsString);
+                    if (!string.IsNullOrWhiteSpace(argumentsString))
+                    {
+                        arguments = JsonValue.Create(argumentsString);
+                    }
+                    else
+                    {
+                        arguments = null;
+                    }
                 }
 
                 return arguments;
             }
             internal set => arguments = value;
         }
+
+        /// <summary>
+        /// Whether to enable strict schema adherence when generating the function call.
+        /// If set to true, the model will follow the exact schema defined in the parameters field.
+        /// </summary>
+        /// <remarks>
+        /// Only a subset of JSON Schema is supported when strict is true.
+        /// </remarks>
+        [JsonInclude]
+        [JsonPropertyName("strict")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
+        public bool? Strict { get; private set; }
 
         /// <summary>
         /// The instance of the object to invoke the method on.
@@ -209,7 +271,7 @@ namespace OpenAI
         [JsonIgnore]
         private MethodInfo MethodInfo { get; }
 
-        internal void CopyFrom(Function other)
+        internal void AppendFrom(Function other)
         {
             if (!string.IsNullOrWhiteSpace(other.Name))
             {
@@ -236,6 +298,10 @@ namespace OpenAI
 
         private static readonly ConcurrentDictionary<string, Function> functionCache = new();
 
+        internal static void ClearFunctionCache() => functionCache.Clear();
+
+        internal static bool TryRemoveFunction(string name) => functionCache.TryRemove(name, out _);
+
         /// <summary>
         /// Invokes the function and returns the result as json.
         /// </summary>
@@ -246,19 +312,29 @@ namespace OpenAI
             {
                 var (function, invokeArgs) = ValidateFunctionArguments();
 
+                if (function.MethodInfo.ReturnType == typeof(Task) ||
+                    function.MethodInfo.ReturnType == typeof(Task<>))
+                {
+                    throw new InvalidOperationException("Cannot invoke an async function synchronously. Use InvokeAsync() instead.");
+                }
+
+                var result = InvokeInternal<object>(function, invokeArgs);
+
                 if (function.MethodInfo.ReturnType == typeof(void))
                 {
-                    function.MethodInfo.Invoke(function.Instance, invokeArgs);
                     return "{\"result\": \"success\"}";
                 }
 
-                var result = Invoke<object>();
                 return JsonSerializer.Serialize(new { result }, OpenAIClient.JsonSerializationOptions);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 return JsonSerializer.Serialize(new { error = e.Message }, OpenAIClient.JsonSerializationOptions);
+            }
+            finally
+            {
+                Arguments = null;
             }
         }
 
@@ -272,13 +348,23 @@ namespace OpenAI
             try
             {
                 var (function, invokeArgs) = ValidateFunctionArguments();
-                var result = function.MethodInfo.Invoke(function.Instance, invokeArgs);
-                return result == null ? default : (T)result;
+
+                if (function.MethodInfo.ReturnType == typeof(Task) ||
+                    function.MethodInfo.ReturnType == typeof(Task<>))
+                {
+                    throw new InvalidOperationException("Cannot invoke an async function synchronously. Use InvokeAsync() instead.");
+                }
+
+                return InvokeInternal<T>(function, invokeArgs);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
+            }
+            finally
+            {
+                Arguments = null;
             }
         }
 
@@ -292,25 +378,23 @@ namespace OpenAI
             try
             {
                 var (function, invokeArgs) = ValidateFunctionArguments(cancellationToken);
+                var result = await InvokeInternalAsync<object>(function, invokeArgs);
 
                 if (function.MethodInfo.ReturnType == typeof(Task))
                 {
-                    if (function.MethodInfo.Invoke(function.Instance, invokeArgs) is not Task task)
-                    {
-                        throw new InvalidOperationException($"The function {Name} did not return a valid Task.");
-                    }
-
-                    await task;
                     return "{\"result\": \"success\"}";
                 }
 
-                var result = await InvokeAsync<object>(cancellationToken);
                 return JsonSerializer.Serialize(new { result }, OpenAIClient.JsonSerializationOptions);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 return JsonSerializer.Serialize(new { error = e.Message }, OpenAIClient.JsonSerializationOptions);
+            }
+            finally
+            {
+                Arguments = null;
             }
         }
 
@@ -326,29 +410,52 @@ namespace OpenAI
             {
                 var (function, invokeArgs) = ValidateFunctionArguments(cancellationToken);
 
-                if (function.MethodInfo.Invoke(function.Instance, invokeArgs) is not Task task)
+                if (function.MethodInfo.ReturnType == typeof(Task))
                 {
-                    throw new InvalidOperationException($"The function {Name} did not return a valid Task.");
+                    throw new InvalidOperationException("Cannot invoke an async function synchronously. Use InvokeAsync() instead.");
                 }
 
-                await task;
-                // ReSharper disable once InconsistentNaming
-                const string Result = nameof(Result);
-                var resultProperty = task.GetType().GetProperty(Result);
-                return (T)resultProperty?.GetValue(task);
+                return await InvokeInternalAsync<T>(function, invokeArgs);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
             }
+            finally
+            {
+                Arguments = null;
+            }
+        }
+
+        private static T InvokeInternal<T>(Function function, object[] invokeArgs)
+        {
+            var result = function.MethodInfo.Invoke(function.Instance, invokeArgs);
+            return result == null ? default : (T)result;
+        }
+
+        private static async Task<T> InvokeInternalAsync<T>(Function function, object[] invokeArgs)
+        {
+            var result = function.MethodInfo.Invoke(function.Instance, invokeArgs);
+
+            if (result is not Task task)
+            {
+                return result == null ? default : (T)result;
+            }
+
+            await task;
+            // ReSharper disable once InconsistentNaming
+            const string Result = nameof(Result);
+            var resultProperty = task.GetType().GetProperty(Result);
+            return (T)resultProperty?.GetValue(task);
         }
 
         private (Function function, object[] invokeArgs) ValidateFunctionArguments(CancellationToken cancellationToken = default)
         {
-            if (Parameters != null && Parameters.AsObject().Count > 0 && Arguments == null)
+            var properties = Parameters?["properties"]?.AsObject();
+            if (properties?.Count > 0 && Arguments == null)
             {
-                throw new ArgumentException($"Function {Name} has parameters but no arguments are set.");
+                throw new ArgumentException($"Function {Name} has {properties.Count} parameters but no arguments are set!");
             }
 
             if (!functionCache.TryGetValue(Name, out var function))
@@ -358,10 +465,10 @@ namespace OpenAI
 
             if (function.MethodInfo == null)
             {
-                throw new InvalidOperationException($"Failed to find a valid method for {Name}");
+                throw new InvalidOperationException($"Failed to find a valid method to invoke for {Name}");
             }
 
-            var requestedArgs = arguments != null
+            var requestedArgs = Arguments != null
                 ? JsonSerializer.Deserialize<Dictionary<string, object>>(Arguments.ToString(), OpenAIClient.JsonSerializationOptions)
                 : new();
             var methodParams = function.MethodInfo.GetParameters();
@@ -392,6 +499,12 @@ namespace OpenAI
                     }
                     else
                     {
+                        // check that the value assigned type matches the parameter type. If not then attempt to change it.
+                        if (value.GetType() != parameter.ParameterType)
+                        {
+                            value = Convert.ChangeType(value, parameter.ParameterType);
+                        }
+
                         invokeArgs[i] = value;
                     }
                 }

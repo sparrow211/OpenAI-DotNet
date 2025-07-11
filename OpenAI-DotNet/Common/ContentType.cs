@@ -11,6 +11,12 @@ namespace OpenAI
         [EnumMember(Value = "image_url")]
         ImageUrl,
         [EnumMember(Value = "image_file")]
-        ImageFile
+        ImageFile,
+        [EnumMember(Value = "file")]
+        File,
+        [EnumMember(Value = "input_audio")]
+        InputAudio,
+        [EnumMember(Value = "refusal")]
+        Refusal,
     }
 }
