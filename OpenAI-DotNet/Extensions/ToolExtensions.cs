@@ -12,6 +12,7 @@ namespace OpenAI.Extensions
     {
         public static void ProcessTools<T>(this IEnumerable<Tool> tools, string toolChoice, out IReadOnlyList<T> toolList, out object activeTool) where T : ITool
         {
+            
             var knownTools = tools?.ToList();
             toolList = knownTools?.ConvertTools<T>();
 
