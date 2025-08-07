@@ -16,7 +16,7 @@ namespace OpenAI.Responses
 
         [JsonInclude]
         [JsonPropertyName("input_schema")]
-        public string InputSchema { get; private set; }
+        public object InputSchema { get; private set; }
 
         [JsonInclude]
         [JsonPropertyName("annotations")]
