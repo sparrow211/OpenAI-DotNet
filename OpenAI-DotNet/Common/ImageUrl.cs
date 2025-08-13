@@ -31,7 +31,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("index")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public int? Index { get; private set; }
+        public int? Index { get;  set; }
 
         /// <summary>
         /// The external URL of the image, must be a supported image types: jpeg, jpg, png, gif, webp.
@@ -39,7 +39,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Url { get; private set; }
+        public string Url { get;  set; }
 
         /// <summary>
         /// Specifies the detail level of the image if specified by the user.
@@ -48,7 +48,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("detail")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageDetail Detail { get; private set; }
+        public ImageDetail Detail { get;  set; }
 
         public override string ToString() => Url;
 

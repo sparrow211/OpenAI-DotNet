@@ -32,12 +32,12 @@ namespace OpenAI
 
         [JsonInclude]
         [JsonPropertyName("data")]
-        public string Data { get; private set; }
+        public string Data { get;  set; }
 
         [JsonInclude]
         [JsonPropertyName("format")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public InputAudioFormat Format { get; private set; }
+        public InputAudioFormat Format { get;  set; }
 
         public override string ToString() => Data;
 

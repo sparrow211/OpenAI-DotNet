@@ -32,7 +32,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("index")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public int? Index { get; private set; }
+        public int? Index { get;  set; }
 
         /// <summary>
         /// The file ID of the image in the message content.
@@ -41,7 +41,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("file_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string FileId { get; private set; }
+        public string FileId { get;  set; }
 
         /// <summary>
         /// Specifies the detail level of the image if specified by the user.
@@ -50,7 +50,7 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("detail")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageDetail Detail { get; private set; }
+        public ImageDetail Detail { get;  set; }
 
         public override string ToString() => FileId;
 
