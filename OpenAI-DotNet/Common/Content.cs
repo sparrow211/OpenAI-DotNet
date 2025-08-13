@@ -63,34 +63,34 @@ namespace OpenAI
         [JsonInclude]
         [JsonPropertyName("index")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public int? Index { get; private set; }
+        public int? Index { get;   set; }
 
         [JsonInclude]
         [JsonPropertyName("type")]
         [JsonConverter(typeof(Extensions.JsonStringEnumConverter<ContentType>))]
         [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-        public ContentType Type { get; private set; }
+        public ContentType Type { get;   set; }
 
         [JsonInclude]
         [JsonPropertyName("text")]
         [JsonConverter(typeof(StringOrObjectConverter<TextContent>))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public object Text { get; private set; }
+        public object Text { get;   set; }
 
         [JsonInclude]
         [JsonPropertyName("image_url")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageUrl ImageUrl { get; private set; }
+        public ImageUrl ImageUrl { get;   set; }
 
         [JsonInclude]
         [JsonPropertyName("image_file")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public ImageFile ImageFile { get; private set; }
+        public ImageFile ImageFile { get;   set; }
 
         [JsonInclude]
         [JsonPropertyName("input_audio")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public InputAudio InputAudio { get; private set; }
+        public InputAudio InputAudio { get;   set; }
 
         public static implicit operator Content(string input) => new(ContentType.Text, input);
 
