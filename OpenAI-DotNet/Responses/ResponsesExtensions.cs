@@ -22,6 +22,10 @@ namespace OpenAI.Responses
             {
                 await Task.Delay(pollingInterval ?? 500, chainedCts.Token).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
+                #region Handling special situations
+                if (!response.Client.Settings.BaseRequestUrlFormat.Contains(OpenAISettings.OpenAIDomain))
+                    return response;
+                #endregion
                 result = await response.UpdateAsync(chainedCts.Token).ConfigureAwait(false);
             } while (result.Status is ResponseStatus.None or ResponseStatus.Queued or ResponseStatus.InProgress or ResponseStatus.Searching);
             return result;

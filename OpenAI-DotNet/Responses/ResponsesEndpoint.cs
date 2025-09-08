@@ -312,6 +312,7 @@ namespace OpenAI.Responses
                             }
 
                             summaryItem.Delta = !string.IsNullOrWhiteSpace(delta) ? delta : null;
+
                             serverSentEvent = summaryItem;
                             break;
                         case "error":

@@ -37,7 +37,8 @@ namespace OpenAI.Responses
             IEnumerable<Tool> tools = null,
             double? topP = null,
             Truncation truncation = Truncation.Auto,
-            string user = null)
+            string user = null,
+             int? maxToolCalls = null)
             : this(
                 input: new List<IResponseItem> { new Message(Role.User, new TextContent(textInput)) },
                 model: model,
@@ -59,7 +60,8 @@ namespace OpenAI.Responses
                 tools: tools,
                 topP: topP,
                 truncation: truncation,
-                user: user)
+                user: user,
+                maxToolCalls:maxToolCalls)
         {
         }
 
@@ -84,7 +86,8 @@ namespace OpenAI.Responses
             IEnumerable<Tool> tools = null,
             double? topP = null,
             Truncation truncation = Truncation.Auto,
-            string user = null)
+            string user = null,
+            int? maxToolCalls = null)
         {
             Input = input?.ToArray() ?? throw new ArgumentNullException(nameof(input));
             Model = string.IsNullOrWhiteSpace(model) ? Models.Model.ChatGPT4o : model;
@@ -121,6 +124,8 @@ namespace OpenAI.Responses
             TopP = topP;
             Truncation = truncation;
             User = user;
+            MaxToolCalls = maxToolCalls;
+
         }
 
         /// <summary>
@@ -179,6 +184,16 @@ namespace OpenAI.Responses
         [JsonPropertyName("max_output_tokens")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? MaxOutputTokens { get; private set; }
+
+        /// <summary>
+        /// The maximum number of total calls to built-in tools that can be processed in a response.
+        /// This maximum number applies across all built-in tool calls,
+        /// not per individual tool. Any further attempts to call a tool by the model will be ignored.
+        /// </summary>
+        [JsonInclude]
+        [JsonPropertyName("max_tool_calls")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MaxToolCalls { get; private set; }
 
         /// <summary>
         /// Set of 16 key-value pairs that can be attached to an object.

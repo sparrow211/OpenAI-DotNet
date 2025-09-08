@@ -28,19 +28,12 @@ namespace OpenAI.Models
             OwnedBy = ownedBy;
         }
 
-        /// <summary>
-        /// Allows a model to be implicitly cast to the string of its id.
-        /// </summary>
-        /// <param name="model">The <see cref="Model"/> to cast to a string.</param>
-        public static implicit operator string(Model model) => model?.ToString();
+        [JsonIgnore]
+        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
 
-        /// <summary>
-        /// Allows a string to be implicitly cast as a <see cref="Model"/>
-        /// </summary>
-        public static implicit operator Model(string name) => new(name);
-
-        /// <inheritdoc />
-        public override string ToString() => Id;
+        [JsonInclude]
+        [JsonPropertyName("created")]
+        public int CreatedAtUnixTimeSeconds { get; private set; }
 
         [JsonInclude]
         [JsonPropertyName("id")]
@@ -51,15 +44,12 @@ namespace OpenAI.Models
         public string Object { get; private set; }
 
         [JsonInclude]
-        [JsonPropertyName("created")]
-        public int CreatedAtUnixTimeSeconds { get; private set; }
-
-        [JsonIgnore]
-        public DateTime CreatedAt => DateTimeOffset.FromUnixTimeSeconds(CreatedAtUnixTimeSeconds).DateTime;
-
-        [JsonInclude]
         [JsonPropertyName("owned_by")]
         public string OwnedBy { get; private set; }
+
+        [JsonInclude]
+        [JsonPropertyName("parent")]
+        public string Parent { get; private set; }
 
         [JsonInclude]
         [JsonPropertyName("permission")]
@@ -69,9 +59,19 @@ namespace OpenAI.Models
         [JsonPropertyName("root")]
         public string Root { get; private set; }
 
-        [JsonInclude]
-        [JsonPropertyName("parent")]
-        public string Parent { get; private set; }
+        /// <summary>
+        /// Allows a string to be implicitly cast as a <see cref="Model"/>
+        /// </summary>
+        public static implicit operator Model(string name) => new(name);
+
+        /// <summary>
+        /// Allows a model to be implicitly cast to the string of its id.
+        /// </summary>
+        /// <param name="model">The <see cref="Model"/> to cast to a string.</param>
+        public static implicit operator string(Model model) => model?.ToString();
+
+        /// <inheritdoc />
+        public override string ToString() => Id;
 
         #region Reasoning Models
 
@@ -180,46 +180,31 @@ namespace OpenAI.Models
         public static Model ChatGPT4o { get; } = new("chatgpt-4o-latest", "openai");
 
         /// <summary>
-        /// GPT-4o (“o” for “omni”) is our versatile, high-intelligence flagship model.
-        /// It accepts both text and image inputs, and produces text outputs (including Structured Outputs).
-        /// It is the best model for most tasks, and is our most capable model outside of our o-series models.
+        /// GPT-3.5 Turbo models can understand and generate natural language or code and have been optimized
+        /// for chat using the Chat Completions API but work well for non-chat tasks as well. As of July 2024,
+        /// use gpt-4o-mini in place of GPT-3.5 Turbo, as it is cheaper, more capable, multimodal, and just as fast.
+        /// GPT-3.5 Turbo is still available for use in the API.
         /// </summary>
         /// <remarks>
-        /// - Context Window: 128,000 tokens<br/>
-        /// - Max Output Tokens: 16,384 tokens
+        /// - Context Window: 16,385 tokens<br/>
+        /// - Max Output Tokens: 4,096 max output tokens
         /// </remarks>
-        public static Model GPT4o { get; } = new("gpt-4o", "openai");
+        public static Model GPT3_5_Turbo { get; } = new("gpt-3.5-turbo", "openai");
 
         /// <summary>
-        /// GPT-4o mini (“o” for “omni”) is a fast, affordable small model for focused tasks.
-        /// It accepts both text and image inputs, and produces text outputs (including Structured Outputs).
-        /// It is ideal for fine-tuning, and model outputs from a larger model like GPT-4o can be distilled
-        /// to GPT-4o-mini to produce similar results at lower cost and latency.
+        /// Same capabilities as the base gpt-3.5-turbo mode but with 4x the context length.
+        /// Tokens are 2x the price of gpt-3.5-turbo. Will be updated with our latest model iteration.
         /// </summary>
-        /// <remarks>
-        /// - Context Window: 128,000 tokens<br/>
-        /// - Max Output Tokens: 16,384 max output tokens
-        /// </remarks>
-        public static Model GPT4oMini { get; } = new("gpt-4o-mini", "openai");
+        public static Model GPT3_5_Turbo_16K { get; } = new("gpt-3.5-turbo-16k", "openai");
 
         /// <summary>
-        /// This is a preview release of the GPT-4o Audio models.
-        /// These models accept audio inputs and outputs, and can be used in the Chat Completions REST API.
+        /// GPT-4 is an older version of a high-intelligence GPT model, usable in Chat Completions.
         /// </summary>
         /// <remarks>
-        /// - Context Window: 128,000 tokens<br/>
-        /// - Max Output Tokens: 16,384 max output tokens
+        /// - Context Window: 8,192 tokens<br/>
+        /// - Max Output Tokens: 8,192 max output tokens
         /// </remarks>
-        public static Model GPT4oAudio { get; } = new("gpt-4o-audio-preview", "openai");
-
-        /// <summary>
-        /// This is a preview release of the smaller GPT-4o Audio mini model. It's designed to input audio or create audio outputs via the REST API.
-        /// </summary>
-        /// <remarks>
-        /// - Context Window: 128,000 tokens<br/>
-        /// - Max Output Tokens: 16,384 max output tokens
-        /// </remarks>
-        public static Model GPT4oAudioMini { get; } = new("gpt-4o-mini-audio-preview", "openai");
+        public static Model GPT4 { get; } = new("gpt-4", "openai");
 
         /// <summary>
         /// GPT-4.1 is our flagship model for complex tasks. It is well suited for problem solving across domains.
@@ -248,16 +233,13 @@ namespace OpenAI.Models
         /// </remarks>
         public static Model GPT4_1_Nano { get; } = new("gpt-4.1-nano", "openai");
 
-        public static Model GPT4_5 { get; } = new("gpt-4.5-preview", "openai");
-
         /// <summary>
-        /// GPT-4 is an older version of a high-intelligence GPT model, usable in Chat Completions.
+        /// Same capabilities as the base gpt-4 mode but with 4x the context length.
+        /// Will be updated with our latest model iteration.  Tokens are 2x the price of gpt-4.
         /// </summary>
-        /// <remarks>
-        /// - Context Window: 8,192 tokens<br/>
-        /// - Max Output Tokens: 8,192 max output tokens
-        /// </remarks>
-        public static Model GPT4 { get; } = new("gpt-4", "openai");
+        public static Model GPT4_32K { get; } = new("gpt-4-32k", "openai");
+
+        public static Model GPT4_5 { get; } = new("gpt-4.5-preview", "openai");
 
         /// <summary>
         /// GPT-4 Turbo is the next generation of GPT-4, an older high-intelligence GPT model.
@@ -270,42 +252,78 @@ namespace OpenAI.Models
         public static Model GPT4_Turbo { get; } = new("gpt-4-turbo", "openai");
 
         /// <summary>
-        /// Same capabilities as the base gpt-4 mode but with 4x the context length.
-        /// Will be updated with our latest model iteration.  Tokens are 2x the price of gpt-4.
-        /// </summary>
-        public static Model GPT4_32K { get; } = new("gpt-4-32k", "openai");
-
-        /// <summary>
-        /// GPT-3.5 Turbo models can understand and generate natural language or code and have been optimized
-        /// for chat using the Chat Completions API but work well for non-chat tasks as well. As of July 2024,
-        /// use gpt-4o-mini in place of GPT-3.5 Turbo, as it is cheaper, more capable, multimodal, and just as fast.
-        /// GPT-3.5 Turbo is still available for use in the API.
+        /// GPT-4o (“o” for “omni”) is our versatile, high-intelligence flagship model.
+        /// It accepts both text and image inputs, and produces text outputs (including Structured Outputs).
+        /// It is the best model for most tasks, and is our most capable model outside of our o-series models.
         /// </summary>
         /// <remarks>
-        /// - Context Window: 16,385 tokens<br/>
-        /// - Max Output Tokens: 4,096 max output tokens
+        /// - Context Window: 128,000 tokens<br/>
+        /// - Max Output Tokens: 16,384 tokens
         /// </remarks>
-        public static Model GPT3_5_Turbo { get; } = new("gpt-3.5-turbo", "openai");
+        public static Model GPT4o { get; } = new("gpt-4o", "openai");
 
         /// <summary>
-        /// Same capabilities as the base gpt-3.5-turbo mode but with 4x the context length.
-        /// Tokens are 2x the price of gpt-3.5-turbo. Will be updated with our latest model iteration.
+        /// This is a preview release of the GPT-4o Audio models.
+        /// These models accept audio inputs and outputs, and can be used in the Chat Completions REST API.
         /// </summary>
-        public static Model GPT3_5_Turbo_16K { get; } = new("gpt-3.5-turbo-16k", "openai");
+        /// <remarks>
+        /// - Context Window: 128,000 tokens<br/>
+        /// - Max Output Tokens: 16,384 max output tokens
+        /// </remarks>
+        public static Model GPT4oAudio { get; } = new("gpt-4o-audio-preview", "openai");
+
+        /// <summary>
+        /// This is a preview release of the smaller GPT-4o Audio mini model. It's designed to input audio or create audio outputs via the REST API.
+        /// </summary>
+        /// <remarks>
+        /// - Context Window: 128,000 tokens<br/>
+        /// - Max Output Tokens: 16,384 max output tokens
+        /// </remarks>
+        public static Model GPT4oAudioMini { get; } = new("gpt-4o-mini-audio-preview", "openai");
+
+        /// <summary>
+        /// GPT-4o mini (“o” for “omni”) is a fast, affordable small model for focused tasks.
+        /// It accepts both text and image inputs, and produces text outputs (including Structured Outputs).
+        /// It is ideal for fine-tuning, and model outputs from a larger model like GPT-4o can be distilled
+        /// to GPT-4o-mini to produce similar results at lower cost and latency.
+        /// </summary>
+        /// <remarks>
+        /// - Context Window: 128,000 tokens<br/>
+        /// - Max Output Tokens: 16,384 max output tokens
+        /// </remarks>
+        public static Model GPT4oMini { get; } = new("gpt-4o-mini", "openai");
+
+        /// <summary>
+        /// GPT-5 is our flagship model for coding, reasoning, and agentic tasks across domains.
+        /// </summary>
+        /// <remarks>
+        /// - Context Window: 400,000 context window<br/>
+        /// - Max Output Tokens: 128,000 max output tokens
+        /// </remarks>
+        public static Model GPT5 { get; } = new("gpt-5", "openai");
+
+        /// <summary>
+        /// GPT-5 mini is a faster, more cost-efficient version of GPT-5. It's great for well-defined tasks and precise prompts.
+        /// </summary>
+        /// <remarks>
+        /// - Context Window: 400,000 context window<br/>
+        /// - Max Output Tokens: 128,000 max output tokens
+        /// </remarks>
+        public static Model GPT5Mini { get; } = new("gpt-5-mini", "openai");
 
         #endregion Chat Models
 
         #region GPT Base Models
 
         /// <summary>
-        /// Replacement for the GPT-3 curie and davinci base models.
-        /// </summary>
-        public static Model Davinci { get; } = new("davinci-002", "openai");
-
-        /// <summary>
         /// Replacement for the GPT-3 ada and babbage base models.
         /// </summary>
         public static Model Babbage { get; } = new("babbage-002", "openai");
+
+        /// <summary>
+        /// Replacement for the GPT-3 curie and davinci base models.
+        /// </summary>
+        public static Model Davinci { get; } = new("davinci-002", "openai");
 
         #endregion GPT Base Models
 
@@ -339,17 +357,31 @@ namespace OpenAI.Models
 
         #region Moderation Models
 
-        public static Model OmniModerationLatest { get; } = new("omni-moderation-latest", "openai");
-
         [Obsolete("use OmniModerationLatest")]
         public static Model Moderation_Latest { get; } = new("text-moderation-latest", "openai");
 
         [Obsolete("use OmniModerationLatest")]
         public static Model Moderation_Stable { get; } = new("text-moderation-stable", "openai");
 
+        public static Model OmniModerationLatest { get; } = new("omni-moderation-latest", "openai");
+
         #endregion Moderation Models
 
         #region Audio Models
+
+        /// <summary>
+        /// GPT-4o Transcribe is a speech-to-text model that uses GPT-4o to transcribe audio.
+        /// It offers improvements to word error rate and better language recognition and accuracy compared to original Whisper models.
+        /// Use it for more accurate transcripts.
+        /// </summary>
+        public static Model Transcribe_GPT_4o { get; } = new("gpt-4o-transcribe", "openai");
+
+        /// <summary>
+        /// GPT-4o mini Transcribe is a speech-to-text model that uses GPT-4o mini to transcribe audio.
+        /// It offers improvements to word error rate and better language recognition and accuracy compared to original Whisper models.
+        /// Use it for more accurate transcripts.
+        /// </summary>
+        public static Model Transcribe_GPT_4o_Mini { get; } = new("gpt-4o-mini-transcribe", "openai");
 
         /// <summary>
         /// TTS is a model that converts text to natural sounding spoken text.
@@ -380,29 +412,15 @@ namespace OpenAI.Models
         /// </summary>
         public static Model Whisper1 { get; } = new("whisper-1", "openai");
 
-        /// <summary>
-        /// GPT-4o Transcribe is a speech-to-text model that uses GPT-4o to transcribe audio.
-        /// It offers improvements to word error rate and better language recognition and accuracy compared to original Whisper models.
-        /// Use it for more accurate transcripts.
-        /// </summary>
-        public static Model Transcribe_GPT_4o { get; } = new("gpt-4o-transcribe", "openai");
-
-        /// <summary>
-        /// GPT-4o mini Transcribe is a speech-to-text model that uses GPT-4o mini to transcribe audio.
-        /// It offers improvements to word error rate and better language recognition and accuracy compared to original Whisper models.
-        /// Use it for more accurate transcripts.
-        /// </summary>
-        public static Model Transcribe_GPT_4o_Mini { get; } = new("gpt-4o-mini-transcribe", "openai");
-
         #endregion Audio Models
 
         #region Image Models
 
         /// <summary>
-        /// GPT Image 1 is our new state-of-the-art image generation model.
-        /// It is a natively multimodal language model that accepts both text and image inputs, and produces image outputs.
+        /// DALL·E is an AI system that creates realistic images and art from a natural language description.
+        /// Older than DALL·E 3, DALL·E 2 offers more control in prompting and more requests at once.
         /// </summary>
-        public static Model GPT_Image_1 { get; } = new("gpt-image-1", "openai");
+        public static Model DallE_2 { get; } = new("dall-e-2", "openai");
 
         /// <summary>
         /// DALL·E is an AI system that creates realistic images and art from a natural language description.
@@ -411,10 +429,10 @@ namespace OpenAI.Models
         public static Model DallE_3 { get; } = new("dall-e-3", "openai");
 
         /// <summary>
-        /// DALL·E is an AI system that creates realistic images and art from a natural language description.
-        /// Older than DALL·E 3, DALL·E 2 offers more control in prompting and more requests at once.
+        /// GPT Image 1 is our new state-of-the-art image generation model.
+        /// It is a natively multimodal language model that accepts both text and image inputs, and produces image outputs.
         /// </summary>
-        public static Model DallE_2 { get; } = new("dall-e-2", "openai");
+        public static Model GPT_Image_1 { get; } = new("gpt-image-1", "openai");
 
         #endregion Image Models
     }
