@@ -15,7 +15,7 @@ namespace OpenAI.Extensions
             
             var knownTools = tools?.ToList();
             toolList = knownTools?.ConvertTools<T>();
-
+            string activeTool2 = "No";
             if (toolList is { Count: > 0 })
             {
                 if (string.IsNullOrWhiteSpace(toolChoice))
